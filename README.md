@@ -13,6 +13,33 @@
 - 🐳 **Docker 支持** - 开箱即用的 Docker 部署方案
 - 📱 **响应式设计** - 完美适配桌面和移动设备
 
+## 系统要求
+
+### 仓颉 SDK 版本要求
+
+**重要提示**：使用包发布和依赖管理功能需要仓颉 SDK **Nightly Build 1.1.0-alpha.20251226020001** 或更高版本。
+
+- ✅ **cjpm publish** - 发布包到仓库
+- ✅ **cjpm install** - 安装和管理依赖
+- ✅ **cjpm update** - 更新包索引
+
+低于此版本的 SDK 可能不支持部分功能或存在兼容性问题。
+
+**下载地址**：
+- [仓颉 Nightly Build 发布页](https://gitcode.com/Cangjie/nightly_build/releases) - 1.1.0 正式发布前的版本下载
+- [仓颉编程语言官网](https://docs.cangjie-lang.cn/) - 官方文档和指南
+
+### 环境要求
+
+**使用 Docker Compose（推荐）**：
+- Docker 20.10+
+- Docker Compose 2.0+
+
+**手动安装**：
+- Go 1.23+
+- Node.js 18+ 和 pnpm（用于构建前端）
+- SQLite 3（自动包含）
+
 ## 快速开始
 
 ### 一键启动（推荐）
@@ -458,7 +485,22 @@ docker-compose build
 docker-compose up -d
 ```
 
-### 7. 依赖缓存位置
+### 7. SDK 版本要求
+
+**Q: 最低需要什么版本的仓颉 SDK？**
+
+**A**: 需要 **Nightly Build 1.1.0-alpha.20251226020001** 或更高版本。
+
+低于此版本的 SDK 可能不支持以下功能：
+- `cjpm publish` - 发布包到仓库
+- `cjpm install` - 安装和管理依赖
+- `cjpm update` - 更新包索引
+
+**下载地址**：
+- [仓颉 Nightly Build 发布页](https://gitcode.com/Cangjie/nightly_build/releases) - 1.1.0 正式发布前的版本
+- [仓颉编程语言官网](https://docs.cangjie-lang.cn/) - 官方文档
+
+### 8. 依赖缓存位置
 
 依赖下载在 `~/.cjpm/repository/`：
 - `index/` - 索引文件
@@ -552,4 +594,4 @@ MIT License
 
 - **[PROTOCOL.md](PROTOCOL.md)** - 详细的协议规范、API 接口和架构设计文档
 - [仓颉编程语言官方文档](https://docs.cangjie-lang.cn/)
-- [cjpm 使用指南](https://docs.cangjie-lang.cn/docs/latest/tools/source_zh_cn/tools/cjpm_manual_cjnative_community.html)
+- [cjpm 使用指南](https://cangjie-lang.cn/docs?url=%2F1.0.4%2Ftools%2Fsource_zh_cn%2Ftools%2Fcjpm_manual_cjnative_community.html)

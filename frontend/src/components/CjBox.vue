@@ -12,7 +12,10 @@
     <!-- 盒子底部 -->
     <polygon points="4,52 32,64 60,52 32,40" fill="#409EFF"/>
 
-    <!-- 盒子前壁（稍微透明，可以看到内部） -->
+    <!-- 文字 cj (在盒子内部深处) -->
+    <text x="32" y="36" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#FFFFFF" text-anchor="middle">cj</text>
+
+    <!-- 盒子前壁（稍微透明，可以看到内部文字） -->
     <rect x="12" y="28" width="40" height="24" fill="#85C1E9" fill-opacity="0.3"/>
 
     <!-- 打开的盖子 - 透视效果 -->
@@ -21,9 +24,6 @@
 
     <!-- 盖子内侧 -->
     <polygon points="12,12 32,24 52,12 32,0" fill="#85C1E9"/>
-
-    <!-- 文字 cj (在盒子内部/盖子上) -->
-    <text x="32" y="18" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#FFFFFF" text-anchor="middle">cj</text>
 
     <!-- 盒子边框线条 -->
     <line x1="12" y1="16" x2="12" y2="44" stroke="#FFFFFF" stroke-width="0.5" opacity="0.5"/>

@@ -4,54 +4,55 @@ import "time"
 
 // Package represents a published Cangjie package
 type Package struct {
-	ID            int64     `xorm:"pk autoincr"`
-	Organization  string    `xorm:"index"`
-	Name          string    `xorm:"index"`
-	Version       string    `xorm:"index"`
-	Description   string
-	ArtifactType  string
-	Executable    bool
-	Authors       string    // JSON array string
-	Repository    string
-	Homepage      string
-	Documentation string
-	Tags          string    // JSON array string
-	Categories    string    // JSON array string
-	Licenses      string    // JSON array string
-	MetaVersion   int
-	MetaData      string    `xorm:"text"` // Complete meta-data.json
+	ID            int64     `xorm:"pk autoincr" json:"id"`
+	Organization  string    `xorm:"index" json:"organization"`
+	Name          string    `xorm:"index" json:"name"`
+	Version       string    `xorm:"index" json:"version"`
+	Description   string    `json:"description"`
+	ArtifactType  string    `json:"artifact_type"`
+	Executable    bool      `json:"executable"`
+	Authors       string    `json:"authors"` // JSON array string
+	Repository    string    `json:"repository"`
+	Homepage      string    `json:"homepage"`
+	Documentation string    `json:"documentation"`
+	Tags          string    `json:"tags"` // JSON array string
+	Categories    string    `json:"categories"` // JSON array string
+	Licenses      string    `json:"licenses"` // JSON array string
+	MetaVersion   int       `json:"meta_version"`
+	MetaData      string    `xorm:"text" json:"meta_data"` // Complete meta-data.json
 
 	// File storage info
-	TarballPath   string    `xorm:"text"`
-	TarballSize   int64
-	TarballSHA256 string    `xorm:"index"`
+	TarballPath   string    `xorm:"text" json:"tarball_path"`
+	TarballSize   int64     `json:"tarball_size"`
+	TarballSHA256 string    `xorm:"index" json:"tarball_sha256"`
 
 	// Timestamps
-	CreatedAt time.Time `xorm:"created"`
-	UpdatedAt time.Time `xorm:"updated"`
+	CreatedAt time.Time `xorm:"created" json:"created_at"`
+	UpdatedAt time.Time `xorm:"updated" json:"updated_at"`
+	DeletedAt time.Time `xorm:"deleted" json:"deleted_at"` // Soft delete timestamp
 }
 
 // User represents a user with API token
 type User struct {
-	ID        int64     `xorm:"pk autoincr"`
-	Username  string    `xorm:"unique"`
-	Token     string    `xorm:"unique index 'token'"`
-	Email     string
-	IsActive  bool      `xorm:"default true"`
-	CreatedAt time.Time `xorm:"created"`
+	ID        int64     `xorm:"pk autoincr" json:"id"`
+	Username  string    `xorm:"unique" json:"username"`
+	Token     string    `xorm:"unique index 'token'" json:"token"`
+	Email     string    `json:"email"`
+	IsActive  bool      `xorm:"default true" json:"is_active"`
+	CreatedAt time.Time `xorm:"created" json:"created_at"`
 }
 
 // PublishLog records package publishing operations
 type PublishLog struct {
-	ID           int64     `xorm:"pk autoincr"`
-	Organization string
-	PackageName  string
-	Version      string
-	Status       string    // success/failed
-	ErrorMessage string    `xorm:"text"`
-	IPAddr       string
-	UserAgent    string
-	CreatedAt    time.Time `xorm:"created"`
+	ID           int64     `xorm:"'i_d' pk autoincr" json:"id"`
+	Organization string    `json:"organization"`
+	PackageName  string    `xorm:"package_name" json:"package_name"`
+	Version      string    `json:"version"`
+	Status       string    `json:"status"` // success/failed
+	ErrorMessage string    `xorm:"'error_message' text" json:"error"`
+	IPAddr       string    `xorm:"'i_p_addr'" json:"ip_addr"`
+	UserAgent    string    `xorm:"user_agent" json:"user_agent"`
+	CreatedAt    time.Time `xorm:"created" json:"created_at"`
 }
 
 // TableName returns the table name for Package

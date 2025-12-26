@@ -1,0 +1,164 @@
+<script setup lang="ts">
+import { useRoute } from 'vue-router'
+import {
+  ElContainer,
+  ElAside,
+  ElMenu,
+  ElMenuItem,
+  ElHeader,
+} from 'element-plus'
+import { House, Box, Document, DataAnalysis, User } from '@element-plus/icons-vue'
+import { siteName } from '../stores/site'
+import CjBox from '../components/CjBox.vue'
+
+const route = useRoute()
+</script>
+
+<template>
+  <el-container>
+    <el-aside width="200px" class="admin-aside">
+      <div class="logo">
+        <div class="logo-icon">
+          <CjBox />
+        </div>
+        <span>{{ siteName }}</span>
+      </div>
+      <el-menu
+        :default-active="route.path"
+        router
+        class="admin-menu"
+      >
+        <el-menu-item index="/admin/dashboard">
+          <el-icon><DataAnalysis /></el-icon>
+          <span>仪表盘</span>
+        </el-menu-item>
+        <el-menu-item index="/admin/packages">
+          <el-icon><Box /></el-icon>
+          <span>包管理</span>
+        </el-menu-item>
+        <el-menu-item index="/admin/users">
+          <el-icon><User /></el-icon>
+          <span>用户管理</span>
+        </el-menu-item>
+        <el-menu-item index="/admin/logs">
+          <el-icon><Document /></el-icon>
+          <span>操作日志</span>
+        </el-menu-item>
+        <el-menu-item index="/">
+          <el-icon><House /></el-icon>
+          <span>返回首页</span>
+        </el-menu-item>
+      </el-menu>
+    </el-aside>
+    <el-container>
+      <el-header class="admin-header">
+        <h2>{{ route.meta.title || '管理后台' }}</h2>
+      </el-header>
+      <el-main class="admin-main">
+        <router-view />
+      </el-main>
+    </el-container>
+  </el-container>
+</template>
+
+<style scoped>
+.admin-aside {
+  background: #001529;
+  color: white;
+  height: 100vh;
+}
+
+.admin-header {
+  background: white;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  padding: 0 30px;
+  height: 60px;
+}
+
+.admin-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #303133;
+}
+
+.admin-main {
+  background: #f0f2f5;
+  height: calc(100vh - 60px);
+  overflow-y: auto;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  font-size: 18px;
+  font-weight: bold;
+  color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.logo-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.admin-menu {
+  border: none;
+  background: transparent;
+  height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+
+:deep(.el-menu) {
+  background: transparent;
+}
+
+:deep(.el-menu-item) {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+:deep(.el-menu-item:hover) {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+:deep(.el-menu-item.is-active) {
+  background: #1890ff;
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .admin-aside {
+    width: 64px !important;
+  }
+
+  .logo-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .logo span {
+    display: none;
+  }
+
+  :deep(.el-menu-item span) {
+    display: none;
+  }
+
+  :deep(.el-menu-item) {
+    padding: 0 20px;
+  }
+
+  .admin-header {
+    padding: 0 15px;
+  }
+
+  .admin-header h2 {
+    font-size: 18px;
+  }
+}
+</style>

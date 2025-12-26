@@ -14,10 +14,10 @@ services:
       # 持久化存储的包文件
       - ./storage:/app/storage
     environment:
-      # 可以通过环境变量配置（可选）
-      - CJREPO_PORT=8060
-      - CJREPO_DB_PATH=/app/data/cjrepo.db
-      - CJREPO_STORAGE_PATH=/app/storage
+      # 管理员密钥（必需，请修改为随机字符串）
+      - CJREPO_ADMIN_KEY=your-secret-admin-key-change-me-in-production
+      # 站点名称（可选）
+      - CJREPO_SITE_NAME=仓颉包仓库
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8060/health"]

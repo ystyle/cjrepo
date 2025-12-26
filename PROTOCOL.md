@@ -225,7 +225,9 @@ type PublishLog struct {
 
 ## API 端点
 
-### 1. 发布包
+### cjpm 协议端点
+
+#### 1. 发布包
 
 **端点**：`POST /pkg/{name}?organization={org}`
 
@@ -258,7 +260,7 @@ Content-Type: application/octet-stream
 - 409 - 版本已存在
 - 500 - 服务器错误
 
-### 2. 下载包
+#### 2. 下载包
 
 **端点**：`GET /pkg/{name}/{version}?organization={org}`
 
@@ -272,7 +274,7 @@ Connection: close
 
 **响应体**：.cjp 文件内容（tar.gz 格式）
 
-### 3. 索引查询
+#### 3. 索引查询
 
 **端点**：`GET /index/{first}/{second}/{name}?organization={org}`
 
@@ -290,13 +292,113 @@ Connection: close
 {"organization":"default","name":"defer","version":"1.0.0","dependencies":[],"testDependencies":[],"scriptDependencies":[],"sha256sum":"abc...","yanked":false,"cjc-version":"0.59.6","index-version":1}
 ```
 
-### 4. 健康检查
+#### 4. 健康检查
 
 **端点**：`GET /health`
 
 **响应**：
 ```json
 {"status": "ok"}
+```
+
+### Web API 端点
+
+#### 公开 API
+
+**统计信息**
+- `GET /api/stats` - 公开统计信息
+  - 返回：包总数、用户数、版本数、站点名称
+
+**包查询**
+- `GET /api/packages` - 包列表（支持分页、搜索）
+  - 参数：`page`, `pageSize`, `search`, `org`
+  - 返回：包列表和总数
+
+- `GET /api/packages/:name` - 包详情（所有版本）
+  - 返回：指定包名的所有版本信息
+
+- `GET /api/packages/:name/:version` - 特定版本详情
+  - 返回：指定包的特定版本信息
+
+- `GET /api/organizations` - 组织列表
+  - 返回：所有组织名称列表
+
+#### 管理 API（需要 JWT 认证）
+
+**认证**
+- `POST /api/admin/login` - 管理员登录
+  - 请求：`{"adminKey": "md5加密后的密钥"}`
+  - 返回：JWT token（30分钟有效）
+
+**统计**
+- `GET /api/admin/dashboard` - Dashboard 详细统计
+  - 返回：包数、版本数、用户数、活跃用户、存储大小、发布统计
+
+**包管理**
+- `GET /api/admin/packages` - 包列表（支持搜索、筛选、包含已删除）
+  - 参数：`page`, `pageSize`, `search`, `org`, `artifactType`, `deleted`
+  - 返回：包列表和总数
+
+- `GET /api/admin/packages/versions/:name` - 获取某个包的所有版本
+  - 参数：`org`（可选）
+  - 返回：指定包的所有版本
+
+- `DELETE /api/admin/packages/:id` - 软删除包
+  - 返回：成功消息
+
+- `PUT /api/admin/packages/:id/restore` - 恢复已删除的包
+  - 返回：成功消息
+
+- `DELETE /api/admin/packages/:id/hard` - 硬删除包（永久删除，不可恢复）
+  - 返回：成功消息
+
+**用户管理**
+- `GET /api/admin/users` - 用户列表
+  - 返回：所有用户信息
+
+- `POST /api/admin/users` - 创建用户
+  - 请求：`{"username": "alice", "email": "alice@example.com"}`
+  - 返回：创建的用户信息（包含 token）
+
+- `DELETE /api/admin/users/:id` - 删除用户
+  - 返回：成功消息
+
+- `PUT /api/admin/users/:id/toggle` - 启用/禁用用户
+  - 返回：更新后的用户信息
+
+- `POST /api/admin/users/:id/reset-token` - 重置用户 token
+  - 返回：新 token 和成功消息
+
+**日志查询**
+- `GET /api/admin/logs/publish` - 发布日志
+  - 参数：`page`, `pageSize`, `status`
+  - 返回：发布日志列表和总数
+
+- `GET /api/admin/logs/admin` - 管理员操作日志
+  - 参数：`page`, `pageSize`, `action`
+  - 返回：管理员操作日志列表和总数
+
+#### 认证方式
+
+**JWT Token 认证**（管理 API）
+
+管理 API 使用 JWT Bearer Token 认证：
+
+```
+Authorization: Bearer <jwt_token>
+```
+
+Token 获取流程：
+1. 调用 `POST /api/admin/login`，提交 MD5 加密后的管理员密钥
+2. 服务器返回 JWT token（30分钟有效）
+3. 后续请求在 Header 中携带该 token
+
+**Token 认证**（cjpm 发布）
+
+cjpm 发布时使用用户 Token：
+
+```
+Authorization: <user_token>
 ```
 
 ## 实现细节

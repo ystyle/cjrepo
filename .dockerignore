@@ -15,6 +15,12 @@ storage/
 *.test
 *.out
 go.work
+cjrepo
+
+# Frontend（将在 Docker 中构建）
+frontend/node_modules/
+frontend/dist/
+.frontend/
 
 # IDE
 .vscode/

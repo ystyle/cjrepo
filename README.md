@@ -2,33 +2,60 @@
 
 一个兼容 `cjpm` 的仓颉包中央库服务，支持包的发布、下载和索引查询。
 
+## 特性
+
+- 📦 **包管理** - 完整的包发布、下载、索引查询功能
+- 🎨 **Web 管理界面** - Vue 3 构建的现代化管理后台
+- 📊 **数据统计** - 实时展示包数量、用户数、存储使用情况
+- 🔐 **安全的认证** - JWT token 认证，30分钟有效期
+- 📝 **操作日志** - 完整的发布日志和管理员操作记录
+- 🔍 **强大的搜索** - 支持包名、描述、组织、类型筛选
+- 🐳 **Docker 支持** - 开箱即用的 Docker 部署方案
+- 📱 **响应式设计** - 完美适配桌面和移动设备
+
 ## 快速开始
 
-### 1. 安装
+### 一键启动（推荐）
+
+使用 Docker Compose 一键启动，无需手动安装依赖：
 
 ```bash
-# 克隆项目
-git clone <repository-url>
+# 1. 克隆项目
+git clone https://gitcode.com/ystyle/cjrepo
 cd cjrepo
 
-# 构建服务
-go build -o cjrepo main.go
+# 2. 修改管理员密钥（重要！）
+# 编辑 docker-compose.yml，修改 CJREPO_ADMIN_KEY 为强密码
+vim docker-compose.yml
+
+# 3. 一键启动
+docker-compose up -d
+
+# 4. 查看日志
+docker-compose logs -f cjrepo
+
+# 5. 访问服务
+# 浏览器打开 http://localhost:8060
+# 管理后台：http://localhost:8060/admin
 ```
 
-### 2. 启动服务
+服务将在后台运行，数据会持久化到 `./data` 和 `./storage` 目录。
+
+### 停止服务
 
 ```bash
-# 启动服务器（默认端口 8060）
-./cjrepo
+# 停止服务
+docker-compose down
 
-# 服务将在 http://localhost:8060 启动
+# 停止并删除数据（谨慎使用）
+docker-compose down -v
 ```
 
-### 3. 添加用户
+### 添加用户
 
 ```bash
-# 创建新用户
-./cjrepo user add alice alice@example.com
+# 在容器中创建新用户
+docker-compose exec cjrepo ./cjrepo user add alice alice@example.com
 
 # 输出示例：
 # ✓ User created successfully!
@@ -40,7 +67,7 @@ go build -o cjrepo main.go
 # token = "token-alice-12345"
 ```
 
-### 4. 配置 cjpm
+### 配置 cjpm
 
 创建或编辑项目的 `cangjie-repo.toml`：
 
@@ -52,19 +79,210 @@ token = "token-alice-12345"
 
 或配置全局设置（`$HOME/.cjpm/cangjie-repo.toml` 或 `$CANGJIE_HOME/tools/config/cangjie-repo.toml`）。
 
-## 部署指南
+### 手动安装（可选）
 
-### 开发环境
+如果你想手动编译和运行：
 
 ```bash
-# 构建
+# 1. 安装依赖
+# Go 1.23+
+# Node.js 18+ 和 pnpm（用于构建前端）
+
+# 2. 克隆项目
+git clone https://gitcode.com/ystyle/cjrepo
+cd cjrepo
+
+# 3. 构建前端
+cd frontend
+pnpm install
+pnpm build
+cd ..
+
+# 4. 构建后端
 go build -o cjrepo main.go
 
-# 启动
+# 5. 设置环境变量（必需）
+export CJREPO_ADMIN_KEY=your-secret-admin-key
+
+# 可选：设置站点名称
+export CJREPO_SITE_NAME=仓颉包仓库
+
+# 6. 启动服务
 ./cjrepo
 ```
 
+
+
+## 功能概览
+
+### 界面预览
+
+#### 首页
+![首页](assets/home.png)
+
+公开首页展示站点统计信息、最新发布的包和快速导航。
+
+#### 包列表
+![包列表](assets/package_list.png)
+
+浏览和搜索所有已发布的仓颉包，支持按名称、描述和组织筛选。
+
+#### 包详情
+![包详情](assets/package_detail.png)
+
+查看包的详细信息、所有版本、依赖关系和安装命令。
+
+#### 帮助文档
+![帮助文档](assets/help.png)
+
+完整的配置教程和 cjpm 使用说明。
+
+#### 管理后台 Dashboard
+![管理后台](assets/admin_dashboard.png)
+
+Dashboard 实时展示包数量、用户数、存储使用情况和发布统计。
+
+#### 包管理
+![包管理](assets/admin_packages.png)
+
+管理所有包（查看、删除、恢复），支持搜索和类型筛选。
+
+#### 用户管理
+![用户管理](assets/admin_users.png)
+
+创建用户、启用/禁用账户、重置 Token。
+
+#### 操作日志
+![操作日志](assets/admin_log.png)
+
+查看发布日志和管理员操作记录。
+
+### 公开页面（无需登录）
+
+- **首页** (`/`)
+  - 站点统计信息
+  - 最新发布的包
+  - 快速导航
+
+- **包搜索** (`/packages`)
+  - 搜索包（按名称、描述）
+  - 按组织筛选
+  - 查看包详情和版本信息
+
+- **帮助文档** (`/docs`)
+  - 配置 cangjie-repo.toml 教程
+  - 配置 cjpm.toml 教程
+  - cjpm 命令使用说明
+  - 常见问题解答
+
+### 管理后台（需要登录）
+
+访问 `/admin` 进入管理后台，使用管理员密钥登录。
+
+#### Dashboard (`/admin/dashboard`)
+- 包总数、版本总数
+- 用户数量、活跃用户数
+- 存储使用情况
+- 发布成功/失败统计
+
+#### 包管理 (`/admin/packages`)
+- 包列表（支持搜索、分页）
+- 按组织、类型筛选（源码/二进制/可执行）
+- 查看包的所有版本
+- 软删除包（可恢复）
+- 硬删除包（永久删除）
+
+#### 用户管理 (`/admin/users`)
+- 用户列表
+- 创建新用户
+- 启用/禁用用户
+- 重置用户 Token
+- 删除用户
+
+#### 操作日志 (`/admin/logs`)
+- 发布日志（成功/失败）
+- 管理员操作日志
+- 按状态、操作类型筛选
+
+## 部署指南
+
 ### 生产环境
+
+#### 使用 Docker Compose（推荐）
+
+**1. 修改配置**
+
+编辑 `docker-compose.yml`，修改以下环境变量：
+
+```yaml
+environment:
+  # 修改管理员密钥为强密码（必需）
+  - CJREPO_ADMIN_KEY=your-very-secure-admin-key-here
+  # 修改站点名称（可选）
+  - CJREPO_SITE_NAME=仓颉包仓库
+```
+
+**2. 启动服务**
+
+```bash
+# 构建并启动
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f cjrepo
+
+# 停止服务
+docker-compose down
+
+# 重启服务
+docker-compose restart cjrepo
+```
+
+**3. 数据持久化**
+
+数据会自动持久化到以下目录：
+- `./data` - SQLite 数据库文件
+- `./storage` - 包文件存储
+
+**4. 备份和恢复**
+
+```bash
+# 备份数据
+tar -czf cjrepo-backup-$(date +%Y%m%d).tar.gz data/ storage/
+
+# 恢复数据
+tar -xzf cjrepo-backup-20240101.tar.gz
+```
+
+#### 使用 Docker 命令
+
+如果不想使用 Docker Compose，可以直接使用 Docker 命令：
+
+```bash
+# 1. 构建镜像
+docker build -t cjrepo:latest .
+
+# 2. 运行容器
+docker run -d \
+  --name cjrepo \
+  -p 8060:8060 \
+  -e CJREPO_ADMIN_KEY=your-very-secure-admin-key-here \
+  -e CJREPO_SITE_NAME=仓颉包仓库 \
+  -v $(pwd)/data:/app/data \
+  -v $(pwd)/storage:/app/storage \
+  --restart unless-stopped \
+  cjrepo:latest
+
+# 3. 查看日志
+docker logs -f cjrepo
+
+# 4. 执行用户管理
+docker exec -it cjrepo ./cjrepo user add alice alice@example.com
+
+# 5. 停止并删除容器
+docker stop cjrepo
+docker rm cjrepo
+```
 
 #### 使用 systemd
 
@@ -79,6 +297,8 @@ After=network.target
 Type=simple
 User=cjrepo
 WorkingDirectory=/opt/cjrepo
+Environment="CJREPO_ADMIN_KEY=your-admin-key"
+Environment="CJREPO_SITE_NAME=仓颉包仓库"
 ExecStart=/opt/cjrepo/cjrepo
 Restart=always
 RestartSec=5
@@ -93,45 +313,6 @@ sudo systemctl daemon-reload
 sudo systemctl enable cjrepo
 sudo systemctl start cjrepo
 ```
-
-#### 使用 Docker（推荐）
-
-**使用 Docker Compose**：
-```bash
-# 构建并启动
-docker-compose up -d
-
-# 查看日志
-docker-compose logs -f
-
-# 停止服务
-docker-compose down
-```
-
-**使用 Docker 命令**：
-```bash
-# 构建镜像
-docker build -t cjrepo:latest .
-
-# 运行容器
-docker run -d \
-  --name cjrepo \
-  -p 8060:8060 \
-  -v $(pwd)/data:/app/data \
-  -v $(pwd)/storage:/app/storage \
-  --restart unless-stopped \
-  cjrepo:latest
-
-# 在容器中执行用户管理
-docker exec -it cjrepo ./cjrepo user add alice alice@example.com
-```
-
-**Dockerfile 特点**：
-- 第一阶段：使用 golang:1.23-alpine 编译
-- 第二阶段：使用 alpine:latest 运行，镜像体积小
-- 非 root 用户运行（cjrepo:1000）
-- 包含健康检查
-- 数据持久化到宿主机 volume
 
 #### 使用 Nginx 反向代理
 
@@ -155,112 +336,37 @@ server {
 }
 ```
 
-### 环境变量
+## 环境变量
 
-支持通过环境变量配置：
-
-```bash
-export CJREPO_DB_PATH=/data/cjrepo.db
-export CJREPO_STORAGE_PATH=/storage
-export CJREPO_PORT=8060
-
-./cjrepo
-```
-
-### 容器内的用户管理
-
-```bash
-# 在运行的容器中执行命令
-docker-compose exec cjrepo ./cjrepo user add username email@example.com
-docker-compose exec cjrepo ./cjrepo user list
-docker-compose exec cjrepo ./cjrepo user delete username
-```
-
-### 配置 cjpm 连接 Docker 服务
-
-如果 cjpm 在宿主机运行，而 cjrepo 在容器中运行，配置如下：
-
-```toml
-[repository.home]
-registry = "http://localhost:8060"
-token = "token-alice-12345"
-```
-
-如果 cjpm 和 cjrepo 都在 Docker 网络中，需要使用容器名称：
-
-```toml
-[repository.home]
-registry = "http://cjrepo:8060"
-token = "token-alice-12345"
-```
-
-## 仓颉项目使用指南
-
-### 创建新项目
-
-```bash
-# 初始化项目
-cjpm init --name myproject
-cd myproject
-```
-
-### 添加依赖
-
-编辑 `cjpm.toml`：
-
-```toml
-[dependencies]
-defer = { version = "1.0.0" }
-```
-
-### 下载依赖
-
-```bash
-# 检查并自动下载依赖
-cjpm check
-
-# 输出：
-# The valid serial compilation order is:
-#   defer
-# cjpm check success
-```
-
-### 编译项目
-
-```bash
-# 编译
-cjpm build
-
-# 编译并运行
-cjpm run
-```
-
-### 发布包
-
-```bash
-# 1. 打包（生成 .cjp 文件和 meta-data.json）
-cjpm bundle
-
-# 2. 发布到中央库
-cjpm publish
-
-# 成功输出：
-# mypackage-1.0.0 publish success
-```
-
-### 更新索引
-
-```bash
-# 更新所有依赖的索引
-cjpm update
-
-# 更新特定包的索引
-cjpm update defer
-```
+| 变量名 | 必需 | 默认值 | 说明 |
+|--------|------|--------|------|
+| `CJREPO_ADMIN_KEY` | ✅ | - | 管理员密钥，用于管理后台登录 |
+| `CJREPO_SITE_NAME` | ❌ | "仓颉包仓库" | 站点名称 |
 
 ## 命令参考
 
-### 服务命令
+### Docker Compose 命令
+
+```bash
+# 启动服务
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f cjrepo
+
+# 停止服务
+docker-compose down
+
+# 重启服务
+docker-compose restart cjrepo
+
+# 用户管理
+docker-compose exec cjrepo ./cjrepo user add <username> <email>
+docker-compose exec cjrepo ./cjrepo user list
+docker-compose exec cjrepo ./cjrepo user delete <username>
+```
+
+### 服务命令（手动安装）
 
 ```bash
 ./cjrepo                    # 启动服务器
@@ -268,7 +374,7 @@ cjpm update defer
 ./cjrepo version           # 显示版本
 ```
 
-### 用户管理
+### 用户管理（手动安装）
 
 ```bash
 ./cjrepo user add <username> <email>     # 创建用户
@@ -290,19 +396,42 @@ cjpm run                       # 运行
 
 ## 常见问题
 
-### 1. 发布失败：401 Unauthorized
+### 1. 如何登录管理后台？
+
+访问 `http://localhost:8060/admin`，使用 `docker-compose.yml` 中配置的 `CJREPO_ADMIN_KEY` 密钥登录。
+
+### 2. 忘记管理员密钥怎么办？
+
+查看 `docker-compose.yml` 文件中的 `CJREPO_ADMIN_KEY` 环境变量，或修改为新密钥后重启：
+
+```bash
+# 编辑配置
+vim docker-compose.yml
+
+# 重启服务
+docker-compose restart cjrepo
+```
+
+### 3. Token 有效期是多久？
+
+JWT token 有效期为 30 分钟，过期后需要重新登录。
+
+### 4. 发布失败：401 Unauthorized
 
 **原因**：Token 无效或未配置
 
 **解决**：
 ```bash
-# 检查 token
+# 使用 Docker Compose
+docker-compose exec cjrepo ./cjrepo user list
+
+# 或手动安装
 ./cjrepo user list
 
 # 更新 cangjie-repo.toml 中的 token
 ```
 
-### 2. 下载失败：404 Not Found
+### 5. 下载失败：404 Not Found
 
 **原因**：包不存在或版本不匹配
 
@@ -314,20 +443,22 @@ cjpm update <pkgname>
 # 检查可用版本
 ```
 
-### 3. 端口被占用
+### 6. Docker 容器无法启动
 
 ```bash
-# 查找占用进程
+# 查看日志
+docker-compose logs cjrepo
+
+# 检查端口是否被占用
 lsof -i :8060
 
-# 杀死进程
-killall cjrepo
-
-# 重新启动
-./cjrepo
+# 重新构建
+docker-compose down
+docker-compose build
+docker-compose up -d
 ```
 
-### 4. 依赖缓存位置
+### 7. 依赖缓存位置
 
 依赖下载在 `~/.cjpm/repository/`：
 - `index/` - 索引文件
@@ -343,25 +474,50 @@ cjpm check
 
 ```bash
 # 查看已发布的包
-sqlite3 data/cjrepo.db "SELECT organization, name, version, description FROM packages;"
+sqlite3 data/cjrepo.db "SELECT organization, name, version, description FROM packages WHERE deleted_at IS NULL;"
 
 # 查看用户
-sqlite3 data/cjrepo.db "SELECT username, email, token FROM users;"
+sqlite3 data/cjrepo.db "SELECT username, email, token, is_active FROM users;"
 
 # 查看发布日志
 sqlite3 data/cjrepo.db "SELECT * FROM publish_logs ORDER BY created_at DESC LIMIT 10;"
+
+# 查看管理员操作日志
+sqlite3 data/cjrepo.db "SELECT * FROM admin_log ORDER BY created_at DESC LIMIT 10;"
 ```
 
 ## 项目结构
 
 ```
 cjrepo/
-├── main.go              # 主入口（包含用户管理）
+├── main.go              # 主入口（包含路由和用户管理）
 ├── internal/            # 内部实现
 │   ├── handlers/        # HTTP 处理器
+│   │   ├── admin.go     # 管理后台 API
+│   │   ├── public.go    # 公开 API
+│   │   ├── publish.go   # 发布端点
+│   │   ├── download.go  # 下载端点
+│   │   └── index.go     # 索引端点
+│   ├── middleware/      # 中间件
+│   │   └── auth.go      # JWT 认证中间件
 │   ├── models/          # 数据模型
+│   │   ├── package.go   # Package, User, PublishLog
+│   │   └── admin_log.go # AdminLog
 │   ├── protocol/        # 协议解析
-│   └── storage/         # 文件存储管理
+│   │   └── parser.go    # 二进制协议解析器
+│   ├── storage/         # 文件存储管理
+│   │   └── manager.go   # 存储路径管理
+│   └── auth/            # 认证服务
+│       └── auth.go      # JWT 生成和验证
+├── frontend/            # Vue 3 前端
+│   ├── src/
+│   │   ├── views/       # 页面组件
+│   │   ├── components/  # 通用组件
+│   │   ├── api/         # API 封装
+│   │   ├── layouts/     # 布局组件
+│   │   └── stores/      # 状态管理
+│   ├── package.json
+│   └── vite.config.ts
 ├── data/                # 数据库文件
 ├── storage/             # 包文件存储
 ├── Dockerfile           # Docker 镜像构建
@@ -369,12 +525,24 @@ cjrepo/
 └── .dockerignore        # Docker 忽略文件
 ```
 
-## 技术文档
+## 技术栈
 
-详细的协议规范、架构设计和实现细节请参阅：
+### 后端
+- **Go 1.23** - 核心语言
+- **Fiber** - Web 框架
+- **XORM** - ORM 框架
+- **SQLite** - 数据库
+- **JWT** - 认证
+- **Go Embed** - 静态资源嵌入
 
-- **[PROTOCOL.md](PROTOCOL.md)** - 协议规范与架构设计
-- **[README.md](README.md)** - 本文档
+### 前端
+- **Vue 3** - 前端框架
+- **Element Plus** - UI 组件库
+- **Vite** - 构建工具
+- **TypeScript** - 类型支持
+- **Vue Router** - 路由管理
+- **Axios** - HTTP 客户端
+- **CryptoJS** - MD5 加密
 
 ## 许可证
 
@@ -382,5 +550,6 @@ MIT License
 
 ## 相关资源
 
+- **[PROTOCOL.md](PROTOCOL.md)** - 详细的协议规范、API 接口和架构设计文档
 - [仓颉编程语言官方文档](https://docs.cangjie-lang.cn/)
 - [cjpm 使用指南](https://docs.cangjie-lang.cn/docs/latest/tools/source_zh_cn/tools/cjpm_manual_cjnative_community.html)

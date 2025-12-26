@@ -1,25 +1,43 @@
-# 第一阶段：构建阶段
-FROM golang:1.23-alpine AS builder
+# 第一阶段：构建前端
+FROM node:20-alpine AS frontend-builder
 
-# 设置工作目录
+WORKDIR /frontend
+
+# 复制前端项目文件
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
+
+# 安装 pnpm 和依赖
+RUN npm install -g pnpm
+RUN pnpm install --frozen-lockfile
+
+# 复制源代码
+COPY frontend/ ./
+
+# 构建前端
+RUN pnpm build-only
+
+# 第二阶段：构建 Go 应用
+FROM golang:1.23-alpine AS go-builder
+
 WORKDIR /build
 
 # 安装必要的构建工具
 RUN apk add --no-cache git gcc musl-dev sqlite-dev
 
-# 复制 go.mod 和 go.sum（如果存在）
+# 复制 go.mod 和 go.sum
 COPY go.mod go.sum* ./
 
 # 下载依赖
 RUN go mod download || true
 
-# 复制源代码
+# 复制源代码和前端构建产物
 COPY . .
+COPY --from=frontend-builder /frontend/dist ./frontend/dist
 
-# 构建应用
+# 构建应用（包含嵌入的前端文件）
 RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -ldflags="-w -s" -o cjrepo .
 
-# 第二阶段：运行阶段
+# 第三阶段：运行阶段
 FROM alpine:latest
 
 # 安装运行时依赖
@@ -33,7 +51,7 @@ RUN addgroup -g 1000 cjrepo && \
 WORKDIR /app
 
 # 从构建阶段复制二进制文件
-COPY --from=builder /build/cjrepo .
+COPY --from=go-builder /build/cjrepo .
 
 # 创建必要的目录
 RUN mkdir -p data storage && \

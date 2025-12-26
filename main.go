@@ -6,12 +6,15 @@ import (
 	"os"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	_ "github.com/mattn/go-sqlite3"
 	"xorm.io/xorm"
 
+	"ystyle.top/go/cjrepo/internal/auth"
 	handlers "ystyle.top/go/cjrepo/internal/handlers"
+	"ystyle.top/go/cjrepo/internal/middleware"
 	"ystyle.top/go/cjrepo/internal/models"
 	"ystyle.top/go/cjrepo/internal/storage"
 )
@@ -67,6 +70,13 @@ func printVersion() {
 }
 
 func startServer() {
+	// Check for admin key（管理密钥，不是 JWT token）
+	adminKey := os.Getenv("CJREPO_ADMIN_KEY")
+	if adminKey == "" {
+		log.Fatal("CJREPO_ADMIN_KEY environment variable is required")
+	}
+	log.Println("Admin key configured")
+
 	// 1. Initialize database
 	engine, err := initDatabase(dbPath)
 	if err != nil {
@@ -76,17 +86,20 @@ func startServer() {
 	// 2. Initialize storage manager
 	storageMgr := storage.NewStorageManager(storagePath)
 
-	// 3. Create Fiber app
+	// 3. Initialize auth service
+	authService := auth.NewAuthService(adminKey)
+
+	// 4. Create Fiber app
 	app := fiber.New(fiber.Config{
 		ErrorHandler: customErrorHandler,
 	})
 	app.Use(logger.New())
 	app.Use(recover.New())
 
-	// 4. Register routes
-	setupRoutes(app, engine, storageMgr)
+	// 5. Register routes
+	setupRoutes(app, engine, storageMgr, authService)
 
-	// 5. Start server
+	// 6. Start server
 	log.Printf("Cangjie Depot Server starting on %s", defaultPort)
 	log.Fatal(app.Listen(defaultPort))
 }
@@ -103,6 +116,7 @@ func initDatabase(path string) (*xorm.Engine, error) {
 		new(models.Package),
 		new(models.User),
 		new(models.PublishLog),
+		new(models.AdminLog),
 	); err != nil {
 		return nil, fmt.Errorf("failed to sync database: %w", err)
 	}
@@ -112,13 +126,13 @@ func initDatabase(path string) (*xorm.Engine, error) {
 }
 
 // setupRoutes configures all application routes
-func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manager) {
+func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manager, authService *auth.AuthService) {
 	// Health check
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "ok"})
 	})
 
-	// API routes
+	// cjpm protocol routes
 	publishHandler := handlers.NewPublishHandler(engine, storageMgr)
 	downloadHandler := handlers.NewDownloadHandler(engine)
 	indexHandler := handlers.NewIndexHandler(engine)
@@ -130,8 +144,6 @@ func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manage
 	app.Get("/pkg/:name/:version", downloadHandler.HandleDownload)
 
 	// Index endpoint: GET /index/{first}/{second}/{name}?organization={org}
-	// Path structure: /index/{first}/{second}/{full_package_name}
-	// Example: /index/de/fe/defer for package "defer"
 	app.Get("/index/:first/:second/:name", indexHandler.HandleIndex)
 
 	// Legacy routes (for backward compatibility)
@@ -140,6 +152,58 @@ func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manage
 	depot.Post("/list", legacyHandler)
 	depot.Post("/download", legacyHandler)
 	depot.Post("/publish", legacyHandler)
+
+	// Public API routes
+	publicHandler := handlers.NewPublicHandler(engine)
+	app.Get("/api/stats", publicHandler.GetStats)
+	app.Get("/api/packages", publicHandler.ListPackages)
+	app.Get("/api/packages/:name", publicHandler.GetPackage)
+	app.Get("/api/packages/:name/:version", publicHandler.GetPackageVersion)
+	app.Get("/api/organizations", publicHandler.GetOrganizations)
+
+	// Admin API routes
+	adminHandler := handlers.NewAdminHandler(engine, authService)
+	jwtAuth := middleware.JWTAuth(authService)
+
+	admin := app.Group("/api/admin")
+
+	// 登录端点（无需认证）
+	admin.Post("/login", adminHandler.Login)
+
+	// 需要 JWT 认证的路由
+	admin.Use(jwtAuth)
+	admin.Get("/dashboard", adminHandler.GetDashboardStats)
+	admin.Get("/stats", adminHandler.GetDashboardStats) // Alias for dashboard
+
+	// Package management
+	admin.Get("/packages", adminHandler.ListPackages)
+	admin.Get("/packages/versions/:name", adminHandler.GetPackageVersions)
+	admin.Delete("/packages/:id", adminHandler.DeletePackage)
+	admin.Put("/packages/:id/restore", adminHandler.RestorePackage)
+	admin.Delete("/packages/:id/hard", adminHandler.HardDeletePackage)
+
+	// User management
+	admin.Get("/users", adminHandler.ListUsers)
+	admin.Post("/users", adminHandler.CreateUser)
+	admin.Delete("/users/:id", adminHandler.DeleteUser)
+	admin.Put("/users/:id/toggle", adminHandler.ToggleUser)
+	admin.Post("/users/:id/reset-token", adminHandler.ResetUserToken)
+
+	// Logs
+	admin.Get("/logs/publish", adminHandler.GetPublishLogs)
+	admin.Get("/logs/admin", adminHandler.GetAdminLogs)
+
+	// Frontend static files (embedded)
+	app.Use("/", filesystem.New(filesystem.Config{
+		Root:       WebFS(),
+		Browse:     false,
+		Index:      "index.html",
+	}))
+
+	// SPA fallback - for all non-API routes, return index.html
+	app.Get("/*", func(c *fiber.Ctx) error {
+		return c.SendFile("./frontend/dist/index.html")
+	})
 
 	log.Println("Routes registered successfully")
 }

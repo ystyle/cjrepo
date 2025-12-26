@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+
+# 数据和存储目录（会被 volume 挂载）
+data/
+storage/
+
+# Go 相关
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+
+# 文档
+*.md
+!README.md
+
+# 其他
+.env

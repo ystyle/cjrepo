@@ -1,0 +1,3 @@
+[repository.home]
+registry = "http://localhost:8060"
+token = "token-ystyle-3150886"

@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  cjrepo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cjrepo
+    ports:
+      - "8060:8060"
+    volumes:
+      # 持久化数据库
+      - ./data:/app/data
+      # 持久化存储的包文件
+      - ./storage:/app/storage
+    environment:
+      # 可以通过环境变量配置（可选）
+      - CJREPO_PORT=8060
+      - CJREPO_DB_PATH=/app/data/cjrepo.db
+      - CJREPO_STORAGE_PATH=/app/storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8060/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s

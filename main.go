@@ -5,6 +5,7 @@ import (
 	"log"
 	"mime"
 	"os"
+	"path/filepath"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -196,27 +197,31 @@ func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manage
 	// SPA fallback - handle all non-API routes
 	app.All("/*", func(c *fiber.Ctx) error {
 		// Try to read file from embedded filesystem
-		path := c.Path()
-		if path == "/" {
-			path = "/index.html"
-		}
+		requestPath := c.Path()
+		filePath := "frontend/dist" + requestPath
 
-		// Read from embedded FS
-		file, err := webFS.ReadFile("frontend/dist" + path)
+		// Read file
+		file, err := webFS.ReadFile(filePath)
 		if err != nil {
-			// File not found, return index.html for SPA
+			// File not found, fallback to index.html for SPA
 			file, err = webFS.ReadFile("frontend/dist/index.html")
 			if err != nil {
 				return c.Status(404).SendString("Not found")
 			}
+			filePath = "frontend/dist/index.html"
 		}
 
 		// Set content type using mime package
-		contentType := mime.TypeByExtension(path)
-		if contentType != "" {
-			c.Set("Content-Type", contentType)
+		ext := filepath.Ext(filePath)
+		contentType := mime.TypeByExtension(ext)
+		if contentType == "" {
+			contentType = "application/octet-stream"
 		}
-		return c.Send(file)
+		c.Set("Content-Type", contentType)
+
+		// Write response
+		_, err = c.Write(file)
+		return err
 	})
 
 	log.Println("Routes registered successfully")

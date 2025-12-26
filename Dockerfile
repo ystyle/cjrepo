@@ -3,6 +3,9 @@ FROM node:20-alpine AS frontend-builder
 
 WORKDIR /frontend
 
+# 设置阿里云 Alpine 镜像源
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
 # 设置阿里云 npm 镜像源
 RUN npm config set registry https://registry.npmmirror.com
 
@@ -27,6 +30,9 @@ WORKDIR /build
 # 设置 Go 中国代理
 ENV GOPROXY=https://goproxy.cn,direct
 
+# 设置阿里云 Alpine 镜像源
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
 # 安装必要的构建工具
 RUN apk add --no-cache git gcc musl-dev sqlite-dev
 
@@ -45,6 +51,9 @@ RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -ldflags="-w -s" -o 
 
 # 第三阶段：运行阶段
 FROM alpine:latest
+
+# 设置阿里云 Alpine 镜像源
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 # 安装运行时依赖
 RUN apk add --no-cache ca-certificates sqlite-libs

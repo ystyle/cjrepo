@@ -119,7 +119,7 @@ const features = [
         <el-skeleton :loading="loading" animated>
           <template #template>
             <el-row :gutter="24">
-              <el-col :xs="12" :sm="12" :md="6" :lg="6" v-for="i in 4" :key="i">
+              <el-col :xs="12" :sm="12" :md="6" :lg="6" v-for="i in 3" :key="i">
                 <el-skeleton-item variant="rect" style="height: 120px; border-radius: 16px; margin-bottom: 24px;" />
               </el-col>
             </el-row>
@@ -159,18 +159,6 @@ const features = [
                   <div class="stat-content">
                     <div class="stat-value">{{ stats.users }}</div>
                     <div class="stat-label">用户数</div>
-                  </div>
-                </div>
-              </el-col>
-
-              <el-col :xs="12" :sm="12" :md="6" :lg="6">
-                <div class="stat-card stat-downloads" @click="router.push('/admin')">
-                  <div class="stat-icon">
-                    <el-icon><Download /></el-icon>
-                  </div>
-                  <div class="stat-content">
-                    <div class="stat-value">管理</div>
-                    <div class="stat-label">后台</div>
                   </div>
                 </div>
               </el-col>

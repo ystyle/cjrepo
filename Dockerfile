@@ -3,11 +3,14 @@ FROM node:20-alpine AS frontend-builder
 
 WORKDIR /frontend
 
+# 设置阿里云 npm 镜像源
+RUN npm config set registry https://registry.npmmirror.com
+
 # 复制前端项目文件
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
 
 # 安装 pnpm 和依赖
-RUN npm install -g pnpm
+RUN npm install -g pnpm --registry=https://registry.npmmirror.com
 RUN pnpm install --frozen-lockfile
 
 # 复制源代码
@@ -20,6 +23,9 @@ RUN pnpm build-only
 FROM golang:1.23-alpine AS go-builder
 
 WORKDIR /build
+
+# 设置 Go 中国代理
+ENV GOPROXY=https://goproxy.cn,direct
 
 # 安装必要的构建工具
 RUN apk add --no-cache git gcc musl-dev sqlite-dev

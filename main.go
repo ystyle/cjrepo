@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
+	"mime"
 	"os"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	_ "github.com/mattn/go-sqlite3"
@@ -193,16 +193,30 @@ func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manage
 	admin.Get("/logs/publish", adminHandler.GetPublishLogs)
 	admin.Get("/logs/admin", adminHandler.GetAdminLogs)
 
-	// Frontend static files (embedded)
-	app.Use("/", filesystem.New(filesystem.Config{
-		Root:       WebFS(),
-		Browse:     false,
-		Index:      "index.html",
-	}))
+	// SPA fallback - handle all non-API routes
+	app.All("/*", func(c *fiber.Ctx) error {
+		// Try to read file from embedded filesystem
+		path := c.Path()
+		if path == "/" {
+			path = "/index.html"
+		}
 
-	// SPA fallback - for all non-API routes, return index.html
-	app.Get("/*", func(c *fiber.Ctx) error {
-		return c.SendFile("./frontend/dist/index.html")
+		// Read from embedded FS
+		file, err := webFS.ReadFile("frontend/dist" + path)
+		if err != nil {
+			// File not found, return index.html for SPA
+			file, err = webFS.ReadFile("frontend/dist/index.html")
+			if err != nil {
+				return c.Status(404).SendString("Not found")
+			}
+		}
+
+		// Set content type using mime package
+		contentType := mime.TypeByExtension(path)
+		if contentType != "" {
+			c.Set("Content-Type", contentType)
+		}
+		return c.Send(file)
 	})
 
 	log.Println("Routes registered successfully")

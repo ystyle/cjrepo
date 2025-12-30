@@ -111,6 +111,19 @@ const copyToken = async () => {
   }
 }
 
+const copyRowToken = async (user: UserType) => {
+  if (!user.token || user.token === '') {
+    ElMessage.warning('该用户 Token 为空，请先重置 Token')
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(user.token)
+    ElMessage.success('Token 已复制到剪贴板')
+  } catch {
+    ElMessage.error('复制失败')
+  }
+}
+
 const formatDate = (date: string) => {
   return new Date(date).toLocaleString('zh-CN')
 }
@@ -153,7 +166,7 @@ onMounted(() => {
               size="small"
               :icon="CopyDocument"
               link
-              @click="navigator.clipboard.writeText(row.token).then(() => ElMessage.success('Token 已复制'))"
+              @click="copyRowToken(row)"
             >
               复制
             </el-button>

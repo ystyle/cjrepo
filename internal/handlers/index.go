@@ -12,13 +12,15 @@ import (
 
 // IndexHandler handles package index queries
 type IndexHandler struct {
-	engine *xorm.Engine
+	engine       *xorm.Engine
+	upstreamSync UpstreamSync
 }
 
 // NewIndexHandler creates a new index handler
-func NewIndexHandler(engine *xorm.Engine) *IndexHandler {
+func NewIndexHandler(engine *xorm.Engine, upstreamSync UpstreamSync) *IndexHandler {
 	return &IndexHandler{
-		engine: engine,
+		engine:       engine,
+		upstreamSync: upstreamSync,
 	}
 }
 
@@ -69,21 +71,42 @@ func (h *IndexHandler) HandleIndex(c *fiber.Ctx) error {
 
 	log.Printf("[DEBUG] Found %d packages for %s", len(packages), fullName)
 
+	// 如果本地没有包，尝试从上游获取索引
+	if len(packages) == 0 && h.upstreamSync != nil {
+		log.Printf("[INFO] No local packages found, trying upstream")
+
+		upstream, err := h.upstreamSync.GetEnabledUpstream()
+		if err == nil && upstream != nil && upstream.Enabled {
+			// 从上游获取索引
+			indexData, err := h.fetchIndexFromUpstream(upstream, fullName, organization)
+			if err == nil && len(indexData) > 0 {
+				log.Printf("[INFO] Successfully fetched index from upstream")
+				c.Set("Content-Type", "application/x-ndjson")
+				c.Write(indexData)
+				return nil
+			}
+			log.Printf("[WARN] Failed to fetch index from upstream: %v", err)
+		}
+	}
+
 	// Generate JSON Lines format (ArtifactIndex structure)
 	c.Set("Content-Type", "application/x-ndjson")
+	hasIndex := false
 	for _, pkg := range packages {
 		// Parse metadata
 		var metaData map[string]interface{}
-		json.Unmarshal([]byte(pkg.MetaData), &metaData)
+		if pkg.MetaData != "" && pkg.MetaData != "null" {
+			json.Unmarshal([]byte(pkg.MetaData), &metaData)
+		}
 
 		// Extract index field
 		indexField := metaData["index"]
 		if indexField == nil {
-			log.Printf("[WARN] No index field in metadata for %s", pkg.Name)
-			continue
+			log.Printf("[WARN] No index field in metadata for %s, generating basic index", pkg.Name)
 		}
 
 		// Build ArtifactIndex structure
+		// 优先使用 index 字段，如果没有则使用包的基本信息
 		artifactIndex := fiber.Map{
 			"organization":      pkg.Organization,
 			"name":              pkg.Name,
@@ -91,16 +114,42 @@ func (h *IndexHandler) HandleIndex(c *fiber.Ctx) error {
 			"dependencies":      []interface{}{},
 			"testDependencies":  []interface{}{},
 			"scriptDependencies": []interface{}{},
-			"sha256sum":         indexField.(map[string]interface{})["sha256sum"],
-			"yanked":           false,
-			"cjc-version":       indexField.(map[string]interface{})["cjc-version"],
-			"index-version":     1,
 		}
+
+		// 如果有 index 字段，使用其中的信息
+		if indexField != nil {
+			if idxMap, ok := indexField.(map[string]interface{}); ok {
+				if sha256, ok := idxMap["sha256sum"].(string); ok {
+					artifactIndex["sha256sum"] = sha256
+				} else {
+					artifactIndex["sha256sum"] = pkg.TarballSHA256
+				}
+				if cjcVersion, ok := idxMap["cjc-version"].(string); ok {
+					artifactIndex["cjc-version"] = cjcVersion
+				}
+			}
+		} else {
+			// 使用数据库中的 SHA256
+			artifactIndex["sha256sum"] = pkg.TarballSHA256
+		}
+
+		artifactIndex["yanked"] = false
+		artifactIndex["index-version"] = 1
 
 		line, _ := json.Marshal(artifactIndex)
 		c.Write(line)
 		c.Write([]byte("\n"))
+		hasIndex = true
+	}
+
+	if !hasIndex {
+		log.Printf("[WARN] No valid index generated for %s", fullName)
 	}
 
 	return nil
+}
+
+// fetchIndexFromUpstream 从上游获取索引数据
+func (h *IndexHandler) fetchIndexFromUpstream(upstream *models.Upstream, name, org string) ([]byte, error) {
+	return h.upstreamSync.FetchIndex(upstream, name, org)
 }

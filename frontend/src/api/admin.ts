@@ -252,3 +252,76 @@ export const getAdminLogs = (params?: {
   })
 }
 
+// 上游配置
+export interface Upstream {
+  id: number
+  name: string
+  url: string
+  enabled: boolean
+  cache_ttl: number
+  auth_token: string
+  last_sync_at: string
+  created_at: string
+  updated_at: string
+}
+
+// 创建上游请求
+export interface CreateUpstreamRequest {
+  name: string
+  url: string
+  enabled?: boolean
+  cache_ttl?: number
+  auth_token?: string
+}
+
+// 更新上游请求
+export interface UpdateUpstreamRequest {
+  url?: string
+  enabled?: boolean
+  cache_ttl?: number
+  auth_token?: string
+}
+
+// 获取上游列表
+export const getUpstreams = () => {
+  return request<Upstream[]>({
+    url: '/admin/upstreams',
+    method: 'get',
+  })
+}
+
+// 创建上游
+export const createUpstream = (data: CreateUpstreamRequest) => {
+  return request<Upstream>({
+    url: '/admin/upstreams',
+    method: 'post',
+    data,
+  })
+}
+
+// 更新上游
+export const updateUpstream = (id: number, data: UpdateUpstreamRequest) => {
+  return request<Upstream>({
+    url: `/admin/upstreams/${id}`,
+    method: 'put',
+    data,
+  })
+}
+
+// 删除上游
+export const deleteUpstream = (id: number) => {
+  return request({
+    url: `/admin/upstreams/${id}`,
+    method: 'delete',
+  })
+}
+
+// 测试上游连接
+export const testUpstream = (id: number) => {
+  return request<{ success: boolean; message: string }>({
+    url: `/admin/upstreams/${id}/test`,
+    method: 'post',
+  })
+}
+
+

@@ -12,19 +12,28 @@ import (
 	"ystyle.top/go/cjrepo/internal/models"
 )
 
+// UpstreamSync 上游同步器接口
+type UpstreamSync interface {
+	GetEnabledUpstream() (*models.Upstream, error)
+	FetchAndSavePackage(upstream *models.Upstream, name, version, org string) (*models.Package, error)
+	FetchIndex(upstream *models.Upstream, name, org string) ([]byte, error)
+}
+
 // DownloadHandler handles package downloads
 type DownloadHandler struct {
-	engine     *xorm.Engine
-	storageMgr interface {
+	engine       *xorm.Engine
+	storageMgr   interface {
 		FileExists(org, name, version string) bool
 		GetFile(org, name, version string) (*interface{}, error)
 	}
+	upstreamSync UpstreamSync
 }
 
 // NewDownloadHandler creates a new download handler
-func NewDownloadHandler(engine *xorm.Engine) *DownloadHandler {
+func NewDownloadHandler(engine *xorm.Engine, upstreamSync UpstreamSync) *DownloadHandler {
 	return &DownloadHandler{
-		engine: engine,
+		engine:       engine,
+		upstreamSync: upstreamSync,
 	}
 }
 
@@ -61,10 +70,33 @@ func (h *DownloadHandler) HandleDownload(c *fiber.Ctx) error {
 	}
 
 	if !has {
-		log.Printf("[WARN] Package not found: %s/%s-%s", organization, packageName, version)
-		return c.Status(404).JSON(fiber.Map{
-			"error": "package not found",
-		})
+		log.Printf("[WARN] Package not found locally: %s/%s-%s", organization, packageName, version)
+
+		// 尝试从上游同步（如果配置了上游）
+		if h.upstreamSync != nil {
+			upstream, err := h.upstreamSync.GetEnabledUpstream()
+			if err == nil && upstream != nil && upstream.Enabled {
+				log.Printf("[INFO] Trying to fetch from upstream: %s", upstream.Name)
+
+				// 从上游获取包信息并保存到本地
+				syncedPkg, err := h.upstreamSync.FetchAndSavePackage(upstream, packageName, version, organization)
+				if err == nil {
+					log.Printf("[INFO] Successfully synced from upstream: %s/%s", packageName, version)
+					pkg = *syncedPkg
+					has = true
+				} else {
+					log.Printf("[ERROR] Failed to sync from upstream: %v", err)
+					// 继续返回404
+				}
+			}
+		}
+
+		// 如果仍然没有找到，返回404
+		if !has {
+			return c.Status(404).JSON(fiber.Map{
+				"error": "package not found",
+			})
+		}
 	}
 
 	log.Printf("[INFO] Downloading package: %s/%s-%s from %s",

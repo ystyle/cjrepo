@@ -6,6 +6,7 @@ import (
 	"mime"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -18,6 +19,7 @@ import (
 	"ystyle.top/go/cjrepo/internal/middleware"
 	"ystyle.top/go/cjrepo/internal/models"
 	"ystyle.top/go/cjrepo/internal/storage"
+	upstream2 "ystyle.top/go/cjrepo/internal/upstream"
 )
 
 const (
@@ -87,18 +89,21 @@ func startServer() {
 	// 2. Initialize storage manager
 	storageMgr := storage.NewStorageManager(storagePath)
 
-	// 3. Initialize auth service
+	// 3. Initialize upstream sync
+	upstreamSync := upstream2.NewSync(engine)
+
+	// 4. Initialize auth service
 	authService := auth.NewAuthService(adminKey)
 
-	// 4. Create Fiber app
+	// 5. Create Fiber app
 	app := fiber.New(fiber.Config{
 		ErrorHandler: customErrorHandler,
 	})
 	app.Use(logger.New())
 	app.Use(recover.New())
 
-	// 5. Register routes
-	setupRoutes(app, engine, storageMgr, authService)
+	// 6. Register routes
+	setupRoutes(app, engine, storageMgr, authService, upstreamSync)
 
 	// 6. Start server
 	log.Printf("Cangjie Depot Server starting on %s", defaultPort)
@@ -121,6 +126,7 @@ func initDatabase(path string) (*xorm.Engine, error) {
 		new(models.User),
 		new(models.PublishLog),
 		new(models.AdminLog),
+		new(models.Upstream),
 	); err != nil {
 		return nil, fmt.Errorf("failed to sync database: %w", err)
 	}
@@ -130,7 +136,7 @@ func initDatabase(path string) (*xorm.Engine, error) {
 }
 
 // setupRoutes configures all application routes
-func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manager, authService *auth.AuthService) {
+func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manager, authService *auth.AuthService, upstreamSync *upstream2.Sync) {
 	// Health check
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "ok"})
@@ -138,8 +144,8 @@ func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manage
 
 	// cjpm protocol routes
 	publishHandler := handlers.NewPublishHandler(engine, storageMgr)
-	downloadHandler := handlers.NewDownloadHandler(engine)
-	indexHandler := handlers.NewIndexHandler(engine)
+	downloadHandler := handlers.NewDownloadHandler(engine, upstreamSync)
+	indexHandler := handlers.NewIndexHandler(engine, upstreamSync)
 
 	// Publish endpoint: POST /pkg/{name}?organization={org}
 	app.Post("/pkg/:name", publishHandler.HandlePublish)
@@ -197,10 +203,34 @@ func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manage
 	admin.Get("/logs/publish", adminHandler.GetPublishLogs)
 	admin.Get("/logs/admin", adminHandler.GetAdminLogs)
 
+	// Upstream management
+	upstreamHandler := handlers.NewUpstreamHandler(engine)
+	admin.Get("/upstreams", upstreamHandler.ListUpstreams)
+	admin.Post("/upstreams", upstreamHandler.CreateUpstream)
+	admin.Put("/upstreams/:id", upstreamHandler.UpdateUpstream)
+	admin.Delete("/upstreams/:id", upstreamHandler.DeleteUpstream)
+	admin.Post("/upstreams/:id/test", upstreamHandler.TestUpstream)
+
 	// SPA fallback - handle all non-API routes
 	app.All("/*", func(c *fiber.Ctx) error {
-		// Try to read file from embedded filesystem
+		// Skip API routes
 		requestPath := c.Path()
+		if len(requestPath) > 0 {
+			// Skip cjpm protocol routes
+			if requestPath == "/health" || strings.HasPrefix(requestPath, "/pkg/") || strings.HasPrefix(requestPath, "/index/") {
+				return c.Status(404).SendString("Not found")
+			}
+			// Skip admin API routes
+			if strings.HasPrefix(requestPath, "/api/") {
+				return c.Status(404).SendString("Not found")
+			}
+			// Skip legacy depot routes
+			if strings.HasPrefix(requestPath, "/depot/") {
+				return c.Status(404).SendString("Not found")
+			}
+		}
+
+		// Try to read file from embedded filesystem
 		filePath := "frontend/dist" + requestPath
 
 		// Read file

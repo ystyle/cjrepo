@@ -60,7 +60,7 @@
 
 #### 1. 构建服务
 ```bash
-go build -o cjrepo main.go
+go build -o cjrepo .
 ```
 
 #### 2. 启动服务

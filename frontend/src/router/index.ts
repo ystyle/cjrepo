@@ -76,6 +76,12 @@ const router = createRouter({
           component: () => import('../views/admin/Logs.vue'),
           meta: { title: '操作日志' },
         },
+        {
+          path: 'upstreams',
+          name: 'admin-upstreams',
+          component: () => import('../views/admin/Upstreams.vue'),
+          meta: { title: '上游源管理' },
+        },
       ],
     },
 

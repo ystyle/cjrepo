@@ -32,15 +32,26 @@ func NewDownloadHandler(engine *xorm.Engine) *DownloadHandler {
 func (h *DownloadHandler) HandleDownload(c *fiber.Ctx) error {
 	packageName := c.Params("name")
 	version := c.Params("version")
-	organization := c.Query("organization", "default")
+	organization := c.Query("organization", "")
 
 	log.Printf("[DEBUG] Download request: package=%s, version=%s, org=%s",
 		packageName, version, organization)
 
 	// Query package from database
 	var pkg models.Package
-	has, err := h.engine.Where("organization = ? AND name = ? AND version = ?",
-		organization, packageName, version).Get(&pkg)
+	var has bool
+	var err error
+
+	// Build query based on organization parameter
+	if organization == "" {
+		// When org is empty, query for packages with empty organization
+		has, err = h.engine.Where("(organization = '' OR organization IS NULL) AND name = ? AND version = ?",
+			packageName, version).Get(&pkg)
+	} else {
+		// When org is specified, query for that organization
+		has, err = h.engine.Where("organization = ? AND name = ? AND version = ?",
+			organization, packageName, version).Get(&pkg)
+	}
 
 	if err != nil {
 		log.Printf("[ERROR] Database error: %v", err)
@@ -58,6 +69,14 @@ func (h *DownloadHandler) HandleDownload(c *fiber.Ctx) error {
 
 	log.Printf("[INFO] Downloading package: %s/%s-%s from %s",
 		organization, packageName, version, pkg.TarballPath)
+
+	// Increment download count using xorm Incr with Exec
+	result, err := h.engine.ID(pkg.ID).Incr("download_count", 1).Update(&models.Package{})
+	if err != nil {
+		log.Printf("[ERROR] Failed to increment download count: %v", err)
+	} else {
+		log.Printf("[INFO] Download count incremented: pkgID=%d, affected=%d", pkg.ID, result)
+	}
 
 	// Read entire file into memory (for reliable transmission)
 	data, err := os.ReadFile(pkg.TarballPath)

@@ -2,10 +2,11 @@ import request from './index'
 
 // 统计信息
 export interface Stats {
-  totalPackages: number
-  totalDownloads: number
-  totalOrganizations: number
-  recentPackages: number
+  packages: number
+  users: number
+  versions: number
+  downloads: number
+  siteName: string
 }
 
 // 依赖项
@@ -68,6 +69,7 @@ export interface Package {
   licenses: string // JSON array string
   meta_version: number
   meta_data: string // JSON string of MetaData
+  readme: string // README content
   tarball_path: string
   tarball_size: number
   tarball_sha256: string
@@ -112,7 +114,7 @@ export const getPackages = (params: {
   page?: number
   pageSize?: number
   search?: string
-  org?: string
+  categories?: string // 多个分类用逗号分隔
 }) => {
   return request<PackagesResponse>({
     url: '/packages',

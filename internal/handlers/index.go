@@ -32,7 +32,7 @@ func (h *IndexHandler) HandleIndex(c *fiber.Ctx) error {
 	first := c.Params("first")
 	second := c.Params("second")
 	fullName := c.Params("name")  // This is the complete package name
-	organization := c.Query("organization", "default")
+	organization := c.Query("organization", "")
 
 	if len(fullName) < 4 {
 		return c.Status(400).JSON(fiber.Map{
@@ -45,9 +45,20 @@ func (h *IndexHandler) HandleIndex(c *fiber.Ctx) error {
 
 	// Query matching packages by exact name
 	var packages []models.Package
-	err := h.engine.Where("organization = ? AND name = ?",
-		organization, fullName).
-		Find(&packages)
+	var err error
+
+	// Build query based on organization parameter
+	if organization == "" {
+		// When org is empty, query for packages with empty organization
+		err = h.engine.Where("(organization = '' OR organization IS NULL) AND name = ?", fullName).
+			OrderBy("created_at DESC").
+			Find(&packages)
+	} else {
+		// When org is specified, query for that organization
+		err = h.engine.Where("organization = ? AND name = ?", organization, fullName).
+			OrderBy("created_at DESC").
+			Find(&packages)
+	}
 
 	if err != nil {
 		log.Printf("Database error: %v", err)

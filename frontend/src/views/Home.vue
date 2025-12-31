@@ -10,7 +10,7 @@ import {
   ElIcon,
   ElSkeleton,
 } from 'element-plus'
-import { DataAnalysis, Download, Collection, Box, ArrowRight, Star } from '@element-plus/icons-vue'
+import { DataAnalysis, Download, Collection, Box, ArrowRight, Star, TrendCharts } from '@element-plus/icons-vue'
 import { getStats } from '../api/public'
 import { siteName } from '../stores/site'
 import CjBox from '../components/CjBox.vue'
@@ -21,6 +21,7 @@ const stats = ref({
   packages: 0,
   users: 0,
   versions: 0,
+  downloads: 0,
 })
 
 const loading = ref(true)
@@ -39,6 +40,14 @@ const loadStats = async () => {
 onMounted(() => {
   loadStats()
 })
+
+// 格式化下载次数
+const formatDownloadCount = (count: number): string => {
+  if (count === 0) return '0'
+  if (count >= 10000) return `${(count / 10000).toFixed(1)}万`
+  if (count >= 1000) return `${(count / 1000).toFixed(1)}k`
+  return count.toString()
+}
 
 const features = [
   {
@@ -119,7 +128,7 @@ const features = [
         <el-skeleton :loading="loading" animated>
           <template #template>
             <el-row :gutter="24">
-              <el-col :xs="12" :sm="12" :md="6" :lg="6" v-for="i in 3" :key="i">
+              <el-col :xs="12" :sm="12" :md="6" :lg="6" v-for="i in 4" :key="i">
                 <el-skeleton-item variant="rect" style="height: 120px; border-radius: 16px; margin-bottom: 24px;" />
               </el-col>
             </el-row>
@@ -159,6 +168,18 @@ const features = [
                   <div class="stat-content">
                     <div class="stat-value">{{ stats.users }}</div>
                     <div class="stat-label">用户数</div>
+                  </div>
+                </div>
+              </el-col>
+
+              <el-col :xs="12" :sm="12" :md="6" :lg="6">
+                <div class="stat-card stat-downloads">
+                  <div class="stat-icon">
+                    <el-icon><TrendCharts /></el-icon>
+                  </div>
+                  <div class="stat-content">
+                    <div class="stat-value">{{ formatDownloadCount(stats.downloads) }}</div>
+                    <div class="stat-label">下载量</div>
                   </div>
                 </div>
               </el-col>

@@ -8,6 +8,7 @@ type Package struct {
 	Organization  string    `xorm:"index" json:"organization"`
 	Name          string    `xorm:"index" json:"name"`
 	Version       string    `xorm:"index" json:"version"`
+	CjcVersion    string    `json:"cjc_version"`
 	Description   string    `json:"description"`
 	ArtifactType  string    `json:"artifact_type"`
 	Executable    bool      `json:"executable"`
@@ -20,11 +21,15 @@ type Package struct {
 	Licenses      string    `json:"licenses"` // JSON array string
 	MetaVersion   int       `json:"meta_version"`
 	MetaData      string    `xorm:"text" json:"meta_data"` // Complete meta-data.json
+	Readme        string    `xorm:"text" json:"readme"` // README content
 
 	// File storage info
 	TarballPath   string    `xorm:"text" json:"tarball_path"`
 	TarballSize   int64     `json:"tarball_size"`
 	TarballSHA256 string    `xorm:"index" json:"tarball_sha256"`
+
+	// Statistics
+	DownloadCount int64     `xorm:"default 0" json:"download_count"`
 
 	// Timestamps
 	CreatedAt time.Time `xorm:"created" json:"created_at"`

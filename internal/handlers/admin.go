@@ -3,6 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -10,19 +12,22 @@ import (
 
 	"ystyle.top/go/cjrepo/internal/auth"
 	"ystyle.top/go/cjrepo/internal/models"
+	"ystyle.top/go/cjrepo/internal/storage"
 )
 
 // AdminHandler 管理后台处理器
 type AdminHandler struct {
-	engine       *xorm.Engine
-	authService  *auth.AuthService
+	engine      *xorm.Engine
+	authService *auth.AuthService
+	storageMgr  *storage.Manager
 }
 
 // NewAdminHandler 创建管理后台处理器
-func NewAdminHandler(engine *xorm.Engine, authService *auth.AuthService) *AdminHandler {
+func NewAdminHandler(engine *xorm.Engine, authService *auth.AuthService, storageMgr *storage.Manager) *AdminHandler {
 	return &AdminHandler{
 		engine:      engine,
 		authService: authService,
+		storageMgr:  storageMgr,
 	}
 }
 
@@ -178,12 +183,35 @@ func (h *AdminHandler) ListPackages(c *fiber.Ctx) error {
 
 // DeletePackage 软删除包
 func (h *AdminHandler) DeletePackage(c *fiber.Ctx) error {
-	id := c.Params("id")
+	idStr := c.Params("id")
 
-	// 软删除
-	_, err := h.engine.ID(id).Cols("deleted_at").Update(&models.Package{
-		DeletedAt: time.Now(),
-	})
+	// 转换 ID
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Invalid package ID",
+		})
+	}
+
+	// 检查包是否存在
+	var pkg models.Package
+	has, err := h.engine.ID(id).Get(&pkg)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Database error",
+		})
+	}
+	if !has {
+		return c.Status(404).JSON(fiber.Map{
+			"error": "Package not found",
+		})
+	}
+
+	fmt.Printf("[DEBUG] Deleting package: ID=%d, org=%s, name=%s, version=%s, tarball=%s\n",
+		id, pkg.Organization, pkg.Name, pkg.Version, pkg.TarballPath)
+
+	// 软删除数据库记录（xorm 会自动将 deleted 字段设置为当前时间）
+	_, err = h.engine.ID(id).Delete(&models.Package{})
 
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
@@ -191,8 +219,34 @@ func (h *AdminHandler) DeletePackage(c *fiber.Ctx) error {
 		})
 	}
 
+	fmt.Printf("[INFO] Database record deleted: ID=%d\n", id)
+
+	// 删除 tarball 文件（使用和上传/下载相同的方式获取路径）
+	tarballPath := h.storageMgr.GetTarballPath(pkg.Organization, pkg.Name, pkg.Version)
+	if tarballPath != "" {
+		fmt.Printf("[DEBUG] Deleting tarball: %s\n", tarballPath)
+		if err := os.Remove(tarballPath); err != nil {
+			// 文件不存在不算错误
+			if os.IsNotExist(err) {
+				fmt.Printf("[INFO] Tarball file does not exist, skipping: %s\n", tarballPath)
+			} else {
+				// 其他错误记录日志，但不影响数据库删除结果
+				fmt.Printf("[WARN] Failed to delete tarball file: %s, error: %v\n", tarballPath, err)
+			}
+		} else {
+			fmt.Printf("[INFO] Tarball file deleted successfully: %s\n", tarballPath)
+		}
+	} else {
+		fmt.Printf("[WARN] Package has no tarball path, skipping file deletion\n")
+	}
+
 	// 记录操作日志
-	h.logAdminAction(c, "delete_package", id, nil)
+	h.logAdminAction(c, "delete_package", idStr, map[string]interface{}{
+		"name":      pkg.Name,
+		"version":   pkg.Version,
+		"org":       pkg.Organization,
+		"tarball":   pkg.TarballPath,
+	})
 
 	return c.JSON(fiber.Map{
 		"message": "Package deleted successfully",
@@ -224,10 +278,40 @@ func (h *AdminHandler) GetPackageVersions(c *fiber.Ctx) error {
 
 // RestorePackage 恢复已删除的包
 func (h *AdminHandler) RestorePackage(c *fiber.Ctx) error {
-	id := c.Params("id")
+	idStr := c.Params("id")
 
-	// 恢复
-	_, err := h.engine.ID(id).Cols("deleted_at").Update(&models.Package{
+	// 转换 ID
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Invalid package ID",
+		})
+	}
+
+	// 检查包是否存在
+	var pkg models.Package
+	has, err := h.engine.ID(id).Get(&pkg)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Database error",
+		})
+	}
+	if !has {
+		return c.Status(404).JSON(fiber.Map{
+			"error": "Package not found",
+		})
+	}
+
+	// 检查 tarball 文件是否还存在
+	fileExists := false
+	if pkg.TarballPath != "" {
+		if _, err := os.Stat(pkg.TarballPath); err == nil {
+			fileExists = true
+		}
+	}
+
+	// 恢复数据库记录（需要 Unscoped + Update 将 deleted 字段设为零值）
+	_, err = h.engine.ID(id).Unscoped().Update(&models.Package{
 		DeletedAt: time.Time{}, // 零值表示未删除
 	})
 
@@ -238,16 +322,47 @@ func (h *AdminHandler) RestorePackage(c *fiber.Ctx) error {
 	}
 
 	// 记录操作日志
-	h.logAdminAction(c, "restore_package", id, nil)
+	h.logAdminAction(c, "restore_package", idStr, map[string]interface{}{
+		"name":        pkg.Name,
+		"version":     pkg.Version,
+		"org":         pkg.Organization,
+		"fileExists":  fileExists,
+	})
+
+	// 如果文件不存在，警告用户
+	if !fileExists {
+		return c.JSON(fiber.Map{
+			"message": "Package restored but tarball file is missing. Please re-upload the package.",
+			"warning": "Tarball file not found",
+			"package": fiber.Map{
+				"name":      pkg.Name,
+				"version":   pkg.Version,
+				"org":       pkg.Organization,
+			},
+		})
+	}
 
 	return c.JSON(fiber.Map{
 		"message": "Package restored successfully",
+		"package": fiber.Map{
+			"name":      pkg.Name,
+			"version":   pkg.Version,
+			"org":       pkg.Organization,
+		},
 	})
 }
 
 // HardDeletePackage 硬删除包（不可恢复）
 func (h *AdminHandler) HardDeletePackage(c *fiber.Ctx) error {
-	id := c.Params("id")
+	idStr := c.Params("id")
+
+	// 转换 ID
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Invalid package ID",
+		})
+	}
 
 	// 先查询包信息
 	var pkg models.Package
@@ -258,12 +373,28 @@ func (h *AdminHandler) HardDeletePackage(c *fiber.Ctx) error {
 		})
 	}
 
-	// 硬删除
-	_, err = h.engine.ID(id).Delete(&models.Package{})
+	// 硬删除数据库记录（Unscoped 使其执行真正的 DELETE）
+	_, err = h.engine.ID(id).Unscoped().Delete(&models.Package{})
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"error": "Failed to hard delete package",
 		})
+	}
+
+	// 删除 tarball 文件（使用和上传/下载相同的方式获取路径）
+	tarballPath := h.storageMgr.GetTarballPath(pkg.Organization, pkg.Name, pkg.Version)
+	if tarballPath != "" {
+		fmt.Printf("[DEBUG] Hard deleting tarball: %s\n", tarballPath)
+		if err := os.Remove(tarballPath); err != nil {
+			// 文件不存在不算错误
+			if os.IsNotExist(err) {
+				fmt.Printf("[INFO] Tarball file does not exist, skipping: %s\n", tarballPath)
+			} else {
+				fmt.Printf("[WARN] Failed to delete tarball file: %s, error: %v\n", tarballPath, err)
+			}
+		} else {
+			fmt.Printf("[INFO] Tarball file deleted: %s\n", tarballPath)
+		}
 	}
 
 	// 记录操作日志
@@ -273,7 +404,7 @@ func (h *AdminHandler) HardDeletePackage(c *fiber.Ctx) error {
 		"org":       pkg.Organization,
 		"tarball":   pkg.TarballPath,
 	}
-	h.logAdminAction(c, "hard_delete_package", id, details)
+	h.logAdminAction(c, "hard_delete_package", idStr, details)
 
 	return c.JSON(fiber.Map{
 		"message": "Package permanently deleted",
@@ -346,9 +477,31 @@ func (h *AdminHandler) CreateUser(c *fiber.Ctx) error {
 
 // DeleteUser 删除用户
 func (h *AdminHandler) DeleteUser(c *fiber.Ctx) error {
-	id := c.Params("id")
+	idStr := c.Params("id")
 
-	_, err := h.engine.ID(id).Delete(&models.User{})
+	// 转换 ID
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Invalid user ID",
+		})
+	}
+
+	// 检查用户是否存在
+	var user models.User
+	has, err := h.engine.ID(id).Get(&user)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Database error",
+		})
+	}
+	if !has {
+		return c.Status(404).JSON(fiber.Map{
+			"error": "User not found",
+		})
+	}
+
+	_, err = h.engine.ID(id).Delete(&models.User{})
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"error": "Failed to delete user",
@@ -356,7 +509,10 @@ func (h *AdminHandler) DeleteUser(c *fiber.Ctx) error {
 	}
 
 	// 记录操作日志
-	h.logAdminAction(c, "delete_user", id, nil)
+	h.logAdminAction(c, "delete_user", idStr, map[string]interface{}{
+		"username": user.Username,
+		"email":    user.Email,
+	})
 
 	return c.JSON(fiber.Map{
 		"message": "User deleted successfully",
@@ -365,7 +521,15 @@ func (h *AdminHandler) DeleteUser(c *fiber.Ctx) error {
 
 // ToggleUser 启用/禁用用户
 func (h *AdminHandler) ToggleUser(c *fiber.Ctx) error {
-	id := c.Params("id")
+	idStr := c.Params("id")
+
+	// 转换 ID
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Invalid user ID",
+		})
+	}
 
 	// 查询用户
 	var user models.User
@@ -386,8 +550,9 @@ func (h *AdminHandler) ToggleUser(c *fiber.Ctx) error {
 	}
 
 	// 记录操作日志
-	h.logAdminAction(c, "toggle_user", id, map[string]interface{}{
-		"isActive": user.IsActive,
+	h.logAdminAction(c, "toggle_user", idStr, map[string]interface{}{
+		"username":  user.Username,
+		"isActive":  user.IsActive,
 	})
 
 	return c.JSON(user)
@@ -401,7 +566,15 @@ type ResetUserTokenResponse struct {
 
 // ResetUserToken 重置用户 token
 func (h *AdminHandler) ResetUserToken(c *fiber.Ctx) error {
-	id := c.Params("id")
+	idStr := c.Params("id")
+
+	// 转换 ID
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Invalid user ID",
+		})
+	}
 
 	// 查询用户
 	var user models.User
@@ -425,7 +598,9 @@ func (h *AdminHandler) ResetUserToken(c *fiber.Ctx) error {
 	}
 
 	// 记录操作日志
-	h.logAdminAction(c, "reset_token", id, nil)
+	h.logAdminAction(c, "reset_token", idStr, map[string]interface{}{
+		"username": user.Username,
+	})
 
 	return c.JSON(ResetUserTokenResponse{
 		Message: "Token reset successfully",

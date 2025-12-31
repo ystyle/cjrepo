@@ -1,9 +1,14 @@
 package handlers
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"xorm.io/xorm"
@@ -24,6 +29,7 @@ type MetaData struct {
 	Organization  string                 `json:"organization"`
 	Name          string                 `json:"name"`
 	Version       string                 `json:"version"`
+	CjcVersion    string                 `json:"cjc-version"`
 	Description   string                 `json:"description"`
 	ArtifactType  string                 `json:"artifact-type"`
 	Executable    bool                   `json:"executable"`
@@ -55,7 +61,7 @@ func NewPublishHandler(engine *xorm.Engine, storageMgr *storage.Manager) *Publis
 func (h *PublishHandler) HandlePublish(c *fiber.Ctx) error {
 	// 1. Extract parameters
 	packageName := c.Params("name")
-	organization := c.Query("organization", "default")
+	organization := c.Query("organization", "")
 
 	log.Printf("[DEBUG] Received publish request: package=%s, org=%s", packageName, organization)
 
@@ -114,15 +120,9 @@ func (h *PublishHandler) HandlePublish(c *fiber.Ctx) error {
 	log.Printf("[DEBUG] Parsed metadata: name=%s, org=%s, version=%s", metaData.Name, metaData.Organization, metaData.Version)
 
 	// 5. Validate package name and version match
-	// Handle empty organization by treating it as "default"
-	metaOrg := metaData.Organization
-	if metaOrg == "" {
-		metaOrg = "default"
-	}
-
-	if metaData.Name != packageName || metaOrg != organization {
+	if metaData.Name != packageName || metaData.Organization != organization {
 		errMsg := fmt.Sprintf("metadata mismatch: expected (name=%s, org=%s), got (name=%s, org=%s)",
-			packageName, organization, metaData.Name, metaOrg)
+			packageName, organization, metaData.Name, metaData.Organization)
 		log.Printf("[ERROR] %s", errMsg)
 		h.logPublish(organization, packageName, metaData.Version, "failed", errMsg, c)
 		return c.Status(400).JSON(fiber.Map{
@@ -183,11 +183,20 @@ func (h *PublishHandler) HandlePublish(c *fiber.Ctx) error {
 		})
 	}
 
+	// 8.5. Extract README from tarball
+	readmeContent := extractReadmeFromTarball(req.Tarball)
+	if readmeContent != "" {
+		log.Printf("[INFO] README extracted successfully, size: %d", len(readmeContent))
+	} else {
+		log.Printf("[INFO] No README found in package")
+	}
+
 	// 9. Store in database
 	pkg := &models.Package{
 		Organization:  organization,
 		Name:          packageName,
 		Version:       metaData.Version,
+		CjcVersion:    metaData.CjcVersion,
 		Description:   metaData.Description,
 		ArtifactType:  metaData.ArtifactType,
 		Executable:    metaData.Executable,
@@ -200,6 +209,7 @@ func (h *PublishHandler) HandlePublish(c *fiber.Ctx) error {
 		Licenses:      toJSONString(metaData.License),
 		MetaVersion:   metaData.MetaVersion,
 		MetaData:      string(req.MetaData),
+		Readme:        readmeContent,
 		TarballPath:   h.storageMgr.GetTarballPath(organization, packageName, metaData.Version),
 		TarballSize:   int64(len(req.Tarball)),
 		TarballSHA256: expectedSHA256,
@@ -231,7 +241,8 @@ func (h *PublishHandler) HandlePublish(c *fiber.Ctx) error {
 }
 
 func (h *PublishHandler) checkPackageExists(org, name, version string) (bool, error) {
-	has, err := h.engine.Where("organization = ? AND name = ? AND version = ?",
+	// 只检查未删除的包
+	has, err := h.engine.Where("organization = ? AND name = ? AND version = ? AND deleted_at IS NULL",
 		org, name, version).Exist(&models.Package{})
 	return has, err
 }
@@ -261,4 +272,75 @@ func toJSONString(arr []string) string {
 	}
 	data, _ := json.Marshal(arr)
 	return string(data)
+}
+
+// extractReadmeFromTarball extracts README content from tarball
+func extractReadmeFromTarball(tarballData []byte) string {
+	// Create gzip reader
+	gzReader, err := gzip.NewReader(bytes.NewReader(tarballData))
+	if err != nil {
+		log.Printf("[ERROR] Failed to create gzip reader: %v", err)
+		return ""
+	}
+	defer gzReader.Close()
+
+	// Create tar reader
+	tarReader := tar.NewReader(gzReader)
+
+	// README filenames to look for (in priority order)
+	readmeFiles := []string{
+		"README_zh.md",
+		"README.md",
+	}
+
+	// Map to store found README contents
+	readmeContents := make(map[string]string)
+
+	// Track all files for debugging
+	var allFiles []string
+
+	// Iterate through tar archive
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Printf("[ERROR] Failed to read tar header: %v", err)
+			return ""
+		}
+
+		// Track all files
+		filename := header.Name
+		allFiles = append(allFiles, filename)
+
+		// Check if file is a README
+		for _, readmeFile := range readmeFiles {
+			// 匹配：文件名等于 README，或者路径以 README 结尾（不区分大小写）
+			if strings.EqualFold(filename, readmeFile) || strings.HasSuffix(strings.ToLower(filename), "/"+strings.ToLower(readmeFile)) {
+				// Read file content
+				content, err := io.ReadAll(tarReader)
+				if err != nil {
+					log.Printf("[ERROR] Failed to read README file: %v", err)
+					continue
+				}
+				readmeContents[readmeFile] = string(content)
+				log.Printf("[INFO] Found README: %s (size: %d)", filename, len(content))
+			}
+		}
+	}
+
+	// Print all files for debugging
+	log.Printf("[DEBUG] Tarball contains %d files: %v", len(allFiles), allFiles)
+
+	// Return README in priority order
+	for _, readmeFile := range readmeFiles {
+		if content, ok := readmeContents[readmeFile]; ok {
+			log.Printf("[INFO] Using README: %s (length: %d)", readmeFile, len(content))
+			return content
+		}
+	}
+
+	log.Printf("[WARN] No README found in tarball")
+	return ""
 }

@@ -112,6 +112,9 @@ func initDatabase(path string) (*xorm.Engine, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
+	// Show SQL logging
+	engine.ShowSQL(true)
+
 	// Sync table structures
 	if err := engine.Sync2(
 		new(models.Package),
@@ -163,7 +166,7 @@ func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manage
 	app.Get("/api/organizations", publicHandler.GetOrganizations)
 
 	// Admin API routes
-	adminHandler := handlers.NewAdminHandler(engine, authService)
+	adminHandler := handlers.NewAdminHandler(engine, authService, storageMgr)
 	jwtAuth := middleware.JWTAuth(authService)
 
 	admin := app.Group("/api/admin")

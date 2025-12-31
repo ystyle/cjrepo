@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import {
   ElMenu,
   ElMenuItem,
@@ -9,6 +9,7 @@ import { House, Box, Document } from '@element-plus/icons-vue'
 import { siteName } from '../stores/site'
 import CjBox from '../components/CjBox.vue'
 
+const router = useRouter()
 const route = useRoute()
 
 const activeMenu = computed(() => {
@@ -17,6 +18,10 @@ const activeMenu = computed(() => {
   if (route.path === '/docs') return '3'
   return '1'
 })
+
+const goToHome = () => {
+  router.push('/')
+}
 </script>
 
 <template>
@@ -24,7 +29,7 @@ const activeMenu = computed(() => {
     <!-- 顶部导航栏 -->
     <header class="top-header">
       <div class="header-content">
-        <div class="logo">
+        <div class="logo" @click="goToHome">
           <div class="logo-icon">
             <CjBox />
           </div>
@@ -93,6 +98,15 @@ const activeMenu = computed(() => {
   font-weight: 700;
   color: #303133;
   text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 8px;
+  margin: -8px;
+  border-radius: 8px;
+}
+
+.logo:hover {
+  background: #f5f7fa;
 }
 
 .logo-icon {

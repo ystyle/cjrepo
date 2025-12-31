@@ -249,6 +249,7 @@ func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manage
 	// Logs
 	admin.Get("/logs/publish", adminHandler.GetPublishLogs)
 	admin.Get("/logs/admin", adminHandler.GetAdminLogs)
+	admin.Post("/logs/clean", adminHandler.CleanLogs)
 
 	// Upstream management
 	upstreamHandler := handlers.NewUpstreamHandler(engine)

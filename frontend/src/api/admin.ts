@@ -253,6 +253,27 @@ export const getAdminLogs = (params?: {
   })
 }
 
+// 清理日志请求
+export interface CleanLogsRequest {
+  logType: 'publish' | 'admin'
+  days: number
+}
+
+// 清理日志响应
+export interface CleanLogsResponse {
+  message: string
+  deletedCount: number
+}
+
+// 清理日志
+export const cleanLogs = (data: CleanLogsRequest) => {
+  return request<CleanLogsResponse>({
+    url: '/admin/logs/clean',
+    method: 'post',
+    data,
+  })
+}
+
 // 上游配置
 export interface Upstream {
   id: number

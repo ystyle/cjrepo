@@ -13,10 +13,20 @@ import {
   ElCol,
   ElTabs,
   ElTabPane,
+  ElDialog,
+  ElForm,
+  ElFormItem,
   ElMessage,
+  ElPopconfirm,
 } from 'element-plus'
-import { Refresh, Document } from '@element-plus/icons-vue'
-import { getPublishLogs, getAdminLogs, type PublishLog, type AdminLog } from '../../api/admin'
+import { Refresh, Document, Delete, Brush } from '@element-plus/icons-vue'
+import {
+  getPublishLogs,
+  getAdminLogs,
+  cleanLogs,
+  type PublishLog,
+  type AdminLog,
+} from '../../api/admin'
 
 const activeTab = ref('publish')
 
@@ -35,6 +45,39 @@ const adminPage = ref(1)
 // 搜索筛选
 const selectedStatus = ref('')
 const selectedAction = ref('')
+
+// 清理日志
+const cleanDialog = ref(false)
+const cleanLoading = ref(false)
+const cleanForm = ref({
+  logType: 'publish' as 'publish' | 'admin',
+  days: 90,
+})
+
+const openCleanDialog = () => {
+  cleanForm.value.logType = activeTab.value as 'publish' | 'admin'
+  cleanDialog.value = true
+}
+
+const handleClean = async () => {
+  cleanLoading.value = true
+  try {
+    const data = await cleanLogs(cleanForm.value)
+    ElMessage.success(data.message || '清理成功')
+    cleanDialog.value = false
+
+    // 刷新日志列表
+    if (activeTab.value === 'publish') {
+      loadPublishLogs()
+    } else {
+      loadAdminLogs()
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '清理失败')
+  } finally {
+    cleanLoading.value = false
+  }
+}
 
 const loadPublishLogs = async () => {
   publishLoading.value = true
@@ -145,7 +188,12 @@ onMounted(() => {
         <el-icon :size="28"><Document /></el-icon>
         操作日志
       </h1>
-      <el-button :icon="Refresh" @click="handleRefresh">刷新</el-button>
+      <div class="header-actions">
+        <el-button type="danger" :icon="Brush" @click="openCleanDialog">
+          清理日志
+        </el-button>
+        <el-button :icon="Refresh" @click="handleRefresh">刷新</el-button>
+      </div>
     </div>
 
     <!-- 筛选栏 -->
@@ -248,6 +296,59 @@ onMounted(() => {
         </el-tab-pane>
       </el-tabs>
     </el-card>
+
+    <!-- 清理日志对话框 -->
+    <el-dialog
+      v-model="cleanDialog"
+      title="清理日志"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <el-alert
+        type="warning"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 20px"
+      >
+        此操作将物理删除日志记录，删除后无法恢复，请谨慎操作！
+      </el-alert>
+
+      <el-form :model="cleanForm" label-width="100px">
+        <el-form-item label="日志类型">
+          <el-select v-model="cleanForm.logType" style="width: 100%">
+            <el-option label="发布日志" value="publish" />
+            <el-option label="管理员操作日志" value="admin" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="时间范围">
+          <el-select v-model="cleanForm.days" style="width: 100%">
+            <el-option label="超过3个月" :value="90" />
+            <el-option label="超过半年" :value="180" />
+            <el-option label="超过1年" :value="365" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+
+      <el-alert type="info" :closable="false" style="margin-top: 15px">
+        将删除{{ cleanForm.days === 90 ? '3个月' : cleanForm.days === 180 ? '半年' : '1年' }}前的{{
+          cleanForm.logType === 'publish' ? '发布日志' : '管理员操作日志'
+        }}
+      </el-alert>
+
+      <template #footer>
+        <el-button @click="cleanDialog = false">取消</el-button>
+        <el-popconfirm
+          title="确定要清理日志吗？此操作不可恢复！"
+          confirm-button-text="确定"
+          cancel-button-text="取消"
+          @confirm="handleClean"
+        >
+          <template #reference>
+            <el-button type="danger" :loading="cleanLoading">确定清理</el-button>
+          </template>
+        </el-popconfirm>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -272,6 +373,11 @@ onMounted(() => {
   gap: 10px;
 }
 
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
 .search-card {
   margin-bottom: 20px;
 }
@@ -285,6 +391,15 @@ onMounted(() => {
 
   .page-header h1 {
     font-size: 22px;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .header-actions button {
+    width: 100%;
   }
 }
 </style>

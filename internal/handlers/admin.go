@@ -714,3 +714,73 @@ func (h *AdminHandler) logAdminAction(c *fiber.Ctx, action, target string, detai
 
 	h.engine.Insert(log)
 }
+
+// CleanLogsRequest 清理日志请求
+type CleanLogsRequest struct {
+	LogType string `json:"logType"` // publish 或 admin
+	Days    int    `json:"days"`    // 90, 180, 365
+}
+
+// CleanLogsResponse 清理日志响应
+type CleanLogsResponse struct {
+	Message     string `json:"message"`
+	DeletedCount int64  `json:"deletedCount"`
+}
+
+// CleanLogs 清理旧日志（物理删除）
+func (h *AdminHandler) CleanLogs(c *fiber.Ctx) error {
+	var req CleanLogsRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	// 验证参数
+	if req.LogType != "publish" && req.LogType != "admin" {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "logType must be 'publish' or 'admin'",
+		})
+	}
+
+	// 计算截止时间
+	cutoffTime := time.Now().AddDate(0, 0, -req.Days)
+
+	var tableName string
+	var logTypeDesc string
+
+	if req.LogType == "publish" {
+		tableName = "publish_logs"
+		logTypeDesc = "发布日志"
+	} else {
+		tableName = "admin_logs"
+		logTypeDesc = "管理员操作日志"
+	}
+
+	// 物理删除（使用 SQL 直接删除，不走软删除）
+	sql := fmt.Sprintf("DELETE FROM %s WHERE created_at < ?", tableName)
+	result, err := h.engine.Exec(sql, cutoffTime)
+	if err != nil {
+		fmt.Printf("[ERROR] Failed to clean %s: %v\n", logTypeDesc, err)
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to clean logs",
+		})
+	}
+
+	// 获取删除的记录数
+	deletedCount, _ := result.RowsAffected()
+	fmt.Printf("[INFO] Cleaned %d records from %s (older than %d days)\n",
+		deletedCount, logTypeDesc, req.Days)
+
+	// 记录操作日志
+	h.logAdminAction(c, "clean_logs", "-", map[string]interface{}{
+		"logType":      req.LogType,
+		"days":         req.Days,
+		"deletedCount": deletedCount,
+	})
+
+	return c.JSON(CleanLogsResponse{
+		Message:      fmt.Sprintf("成功清理 %d 条%s", deletedCount, logTypeDesc),
+		DeletedCount: deletedCount,
+	})
+}

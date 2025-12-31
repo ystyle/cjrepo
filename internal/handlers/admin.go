@@ -753,7 +753,7 @@ func (h *AdminHandler) CleanLogs(c *fiber.Ctx) error {
 		tableName = "publish_logs"
 		logTypeDesc = "发布日志"
 	} else {
-		tableName = "admin_logs"
+		tableName = "admin_log"
 		logTypeDesc = "管理员操作日志"
 	}
 

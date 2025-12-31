@@ -316,7 +316,7 @@ func (s *Sync) DownloadFromUpstream(upstream *models.Upstream, pkg *models.Packa
 // buildDownloadURL 构建下载URL
 func (s *Sync) buildDownloadURL(baseURL, name, version, org string) string {
 	baseURL = strings.TrimSuffix(baseURL, "/")
-	url := fmt.Sprintf("%s/pkg/%s/%s/download", baseURL, name, version)
+	url := fmt.Sprintf("%s/pkg/%s/%s", baseURL, name, version)
 	if org != "" {
 		url += "?organization=" + org
 	}

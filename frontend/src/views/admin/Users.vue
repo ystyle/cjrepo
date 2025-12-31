@@ -9,6 +9,8 @@ import {
   ElForm,
   ElFormItem,
   ElInput,
+  ElSelect,
+  ElOption,
   ElMessage,
   ElIcon,
   ElTag,
@@ -17,15 +19,28 @@ import {
   ElPopconfirm,
 } from 'element-plus'
 import { User, Refresh, Plus, Key, CopyDocument, Delete } from '@element-plus/icons-vue'
-import { getUsers, createUser, resetUserToken, toggleUser, deleteUser, type User as UserType } from '../../api/admin'
+import {
+  getUsers,
+  createUser,
+  resetUserToken,
+  toggleUser,
+  deleteUser,
+  getOrganizations,
+  type User as UserType,
+  type Organization,
+} from '../../api/admin'
 
 const users = ref<UserType[]>([])
 const loading = ref(false)
+
+const organizations = ref<Organization[]>([])
+const organizationsLoading = ref(false)
 
 const createDialog = ref(false)
 const createForm = ref({
   username: '',
   email: '',
+  organization_id: undefined as number | undefined,
 })
 
 const tokenDialog = ref(false)
@@ -44,6 +59,23 @@ const loadUsers = async () => {
   }
 }
 
+const loadOrganizations = async () => {
+  organizationsLoading.value = true
+  try {
+    const data = await getOrganizations()
+    organizations.value = data
+  } catch (error: any) {
+    ElMessage.error(error.message || '加载组织列表失败')
+  } finally {
+    organizationsLoading.value = false
+  }
+}
+
+const openCreateDialog = async () => {
+  await loadOrganizations()
+  createDialog.value = true
+}
+
 const handleCreate = async () => {
   if (!createForm.value.username || !createForm.value.email) {
     ElMessage.warning('请填写完整信息')
@@ -60,7 +92,7 @@ const handleCreate = async () => {
     tokenUser.value = data
     tokenDialog.value = true
 
-    createForm.value = { username: '', email: '' }
+    createForm.value = { username: '', email: '', organization_id: undefined }
     loadUsers()
   } catch (error: any) {
     ElMessage.error(error.message || '创建用户失败')
@@ -145,7 +177,7 @@ onMounted(() => {
         用户管理
       </h1>
       <div class="header-actions">
-        <el-button type="primary" :icon="Plus" @click="createDialog = true">
+        <el-button type="primary" :icon="Plus" @click="openCreateDialog">
           创建用户
         </el-button>
         <el-button :icon="Refresh" @click="loadUsers">刷新</el-button>
@@ -223,7 +255,7 @@ onMounted(() => {
       width="500px"
       :close-on-click-modal="false"
     >
-      <el-form :model="createForm" label-width="80px">
+      <el-form :model="createForm" label-width="100px">
         <el-form-item label="用户名" required>
           <el-input
             v-model="createForm.username"
@@ -236,6 +268,27 @@ onMounted(() => {
             type="email"
             placeholder="请输入邮箱"
           />
+        </el-form-item>
+        <el-form-item label="所属组织">
+          <el-select
+            v-model="createForm.organization_id"
+            placeholder="请选择组织（可选）"
+            clearable
+            style="width: 100%"
+            :loading="organizationsLoading"
+          >
+            <el-option
+              v-for="org in organizations"
+              :key="org.id"
+              :label="org.display_name || org.name"
+              :value="org.id"
+            >
+              <span>{{ org.display_name || org.name }}</span>
+              <span v-if="org.is_default" style="color: #8492a6; font-size: 12px; margin-left: 8px">
+                (默认)
+              </span>
+            </el-option>
+          </el-select>
         </el-form-item>
       </el-form>
 

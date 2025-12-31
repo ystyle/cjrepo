@@ -80,6 +80,7 @@ export interface User {
 export interface CreateUserRequest {
   username: string
   email: string
+  organization_id?: number
 }
 
 // 重置 token 响应

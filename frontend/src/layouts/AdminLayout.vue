@@ -36,13 +36,13 @@ const route = useRoute()
           <el-icon><Box /></el-icon>
           <span>包管理</span>
         </el-menu-item>
-        <el-menu-item index="/admin/organizations">
-          <el-icon><Setting /></el-icon>
-          <span>组织管理</span>
-        </el-menu-item>
         <el-menu-item index="/admin/users">
           <el-icon><User /></el-icon>
           <span>用户管理</span>
+        </el-menu-item>
+        <el-menu-item index="/admin/organizations">
+          <el-icon><Setting /></el-icon>
+          <span>组织管理</span>
         </el-menu-item>
         <el-menu-item index="/admin/upstreams">
           <el-icon><Connection /></el-icon>

@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -242,10 +243,10 @@ func (h *AdminHandler) DeletePackage(c *fiber.Ctx) error {
 
 	// 记录操作日志
 	h.logAdminAction(c, "delete_package", idStr, map[string]interface{}{
-		"name":      pkg.Name,
-		"version":   pkg.Version,
-		"org":       pkg.Organization,
-		"tarball":   pkg.TarballPath,
+		"name":    pkg.Name,
+		"version": pkg.Version,
+		"org":     pkg.Organization,
+		"tarball": pkg.TarballPath,
 	})
 
 	return c.JSON(fiber.Map{
@@ -323,10 +324,10 @@ func (h *AdminHandler) RestorePackage(c *fiber.Ctx) error {
 
 	// 记录操作日志
 	h.logAdminAction(c, "restore_package", idStr, map[string]interface{}{
-		"name":        pkg.Name,
-		"version":     pkg.Version,
-		"org":         pkg.Organization,
-		"fileExists":  fileExists,
+		"name":       pkg.Name,
+		"version":    pkg.Version,
+		"org":        pkg.Organization,
+		"fileExists": fileExists,
 	})
 
 	// 如果文件不存在，警告用户
@@ -335,9 +336,9 @@ func (h *AdminHandler) RestorePackage(c *fiber.Ctx) error {
 			"message": "Package restored but tarball file is missing. Please re-upload the package.",
 			"warning": "Tarball file not found",
 			"package": fiber.Map{
-				"name":      pkg.Name,
-				"version":   pkg.Version,
-				"org":       pkg.Organization,
+				"name":    pkg.Name,
+				"version": pkg.Version,
+				"org":     pkg.Organization,
 			},
 		})
 	}
@@ -345,9 +346,9 @@ func (h *AdminHandler) RestorePackage(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"message": "Package restored successfully",
 		"package": fiber.Map{
-			"name":      pkg.Name,
-			"version":   pkg.Version,
-			"org":       pkg.Organization,
+			"name":    pkg.Name,
+			"version": pkg.Version,
+			"org":     pkg.Organization,
 		},
 	})
 }
@@ -399,10 +400,10 @@ func (h *AdminHandler) HardDeletePackage(c *fiber.Ctx) error {
 
 	// 记录操作日志
 	details := map[string]interface{}{
-		"name":      pkg.Name,
-		"version":   pkg.Version,
-		"org":       pkg.Organization,
-		"tarball":   pkg.TarballPath,
+		"name":    pkg.Name,
+		"version": pkg.Version,
+		"org":     pkg.Organization,
+		"tarball": pkg.TarballPath,
 	}
 	h.logAdminAction(c, "hard_delete_package", idStr, details)
 
@@ -427,8 +428,9 @@ func (h *AdminHandler) ListUsers(c *fiber.Ctx) error {
 
 // CreateUserRequest 创建用户请求
 type CreateUserRequest struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
+	Username       string `json:"username"`
+	Email          string `json:"email"`
+	OrganizationID int64  `json:"organization_id"` // 可选：创建后直接加入组织
 }
 
 // CreateUser 创建用户
@@ -464,6 +466,20 @@ func (h *AdminHandler) CreateUser(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{
 			"error": "Failed to create user",
 		})
+	}
+
+	// 如果指定了组织，自动添加到组织
+	if req.OrganizationID > 0 {
+		member := &models.OrganizationMember{
+			OrganizationID: req.OrganizationID,
+			UserID:         user.ID,
+		}
+		if _, err := h.engine.Insert(member); err != nil {
+			// 组织添加失败，但不影响用户创建
+			log.Printf("[WARN] Failed to add user %d to organization %d: %v", user.ID, req.OrganizationID, err)
+		} else {
+			log.Printf("[INFO] Added user %s to organization %d", user.Username, req.OrganizationID)
+		}
 	}
 
 	// 记录操作日志
@@ -551,8 +567,8 @@ func (h *AdminHandler) ToggleUser(c *fiber.Ctx) error {
 
 	// 记录操作日志
 	h.logAdminAction(c, "toggle_user", idStr, map[string]interface{}{
-		"username":  user.Username,
-		"isActive":  user.IsActive,
+		"username": user.Username,
+		"isActive": user.IsActive,
 	})
 
 	return c.JSON(user)

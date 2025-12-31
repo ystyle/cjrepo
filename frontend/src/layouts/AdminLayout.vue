@@ -7,7 +7,7 @@ import {
   ElMenuItem,
   ElHeader,
 } from 'element-plus'
-import { House, Box, Document, DataAnalysis, User, Connection } from '@element-plus/icons-vue'
+import { House, Box, Document, DataAnalysis, User, Connection, Setting } from '@element-plus/icons-vue'
 import { siteName } from '../stores/site'
 import CjBox from '../components/CjBox.vue'
 
@@ -36,13 +36,17 @@ const route = useRoute()
           <el-icon><Box /></el-icon>
           <span>包管理</span>
         </el-menu-item>
+        <el-menu-item index="/admin/organizations">
+          <el-icon><Setting /></el-icon>
+          <span>组织管理</span>
+        </el-menu-item>
         <el-menu-item index="/admin/users">
           <el-icon><User /></el-icon>
           <span>用户管理</span>
         </el-menu-item>
         <el-menu-item index="/admin/upstreams">
           <el-icon><Connection /></el-icon>
-          <span>上游源管理</span>
+          <span>上游管理</span>
         </el-menu-item>
         <el-menu-item index="/admin/logs">
           <el-icon><Document /></el-icon>

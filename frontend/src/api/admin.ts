@@ -354,4 +354,111 @@ export const clearUpstreamCache = (id: number) => {
   })
 }
 
+// 组织管理
+export interface Organization {
+  id: number
+  name: string
+  display_name: string
+  description: string
+  is_default: boolean
+  member_count: number
+  package_count: number
+  created_at: string
+  updated_at: string
+}
+
+// 创建组织请求
+export interface CreateOrganizationRequest {
+  name: string
+  display_name: string
+  description?: string
+}
+
+// 更新组织请求
+export interface UpdateOrganizationRequest {
+  display_name?: string
+  description?: string
+  is_default?: boolean
+}
+
+// 组织成员
+export interface OrganizationMember {
+  user_id: number
+  username: string
+  email: string
+  is_active: boolean
+  created_at: string
+}
+
+// 添加成员请求
+export interface AddMemberRequest {
+  username: string
+}
+
+// 获取组织列表
+export const getOrganizations = () => {
+  return request<Organization[]>({
+    url: '/admin/organizations',
+    method: 'get',
+  })
+}
+
+// 创建组织
+export const createOrganization = (data: CreateOrganizationRequest) => {
+  return request<Organization>({
+    url: '/admin/organizations',
+    method: 'post',
+    data,
+  })
+}
+
+// 更新组织
+export const updateOrganization = (id: number, data: UpdateOrganizationRequest) => {
+  return request<Organization>({
+    url: `/admin/organizations/${id}`,
+    method: 'put',
+    data,
+  })
+}
+
+// 删除组织
+export const deleteOrganization = (id: number) => {
+  return request({
+    url: `/admin/organizations/${id}`,
+    method: 'delete',
+  })
+}
+
+// 获取组织成员
+export const getOrganizationMembers = (id: number) => {
+  return request<OrganizationMember[]>({
+    url: `/admin/organizations/${id}/members`,
+    method: 'get',
+  })
+}
+
+// 添加组织成员
+export const addOrganizationMember = (id: number, data: AddMemberRequest) => {
+  return request<{
+    message: string
+    user: {
+      id: number
+      username: string
+      email: string
+    }
+  }>({
+    url: `/admin/organizations/${id}/members`,
+    method: 'post',
+    data,
+  })
+}
+
+// 移除组织成员
+export const removeOrganizationMember = (id: number, userId: number) => {
+  return request({
+    url: `/admin/organizations/${id}/members/${userId}`,
+    method: 'delete',
+  })
+}
+
 

@@ -43,12 +43,13 @@ type Package struct {
 
 // User represents a user with API token
 type User struct {
-	ID        int64     `xorm:"pk autoincr" json:"id"`
-	Username  string    `xorm:"unique" json:"username"`
-	Token     string    `xorm:"unique index 'token'" json:"token"`
-	Email     string    `json:"email"`
-	IsActive  bool      `xorm:"default true" json:"is_active"`
-	CreatedAt time.Time `xorm:"created" json:"created_at"`
+	ID          int64     `xorm:"pk autoincr" json:"id"`
+	Username    string    `xorm:"unique" json:"username"`
+	Token       string    `xorm:"unique index 'token'" json:"token"`
+	Email       string    `json:"email"`
+	IsActive    bool      `xorm:"default true" json:"is_active"`
+	IsSuperuser bool      `xorm:"default false" json:"is_superuser"`
+	CreatedAt   time.Time `xorm:"created" json:"created_at"`
 }
 
 // PublishLog records package publishing operations

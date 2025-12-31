@@ -281,7 +281,7 @@ onMounted(() => {
     <!-- 页面头部 -->
     <div class="page-header">
       <div class="header-left">
-        <h2 class="page-title">上游源管理</h2>
+        <h2 class="page-title">上游管理</h2>
         <p class="page-description">
           配置上游包源，当本地没有包时会自动从上游拉取并缓存
         </p>

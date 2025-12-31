@@ -18,6 +18,8 @@ services:
       - CJREPO_ADMIN_KEY=your-secret-admin-key-change-me-in-production
       # 站点名称（可选）
       - CJREPO_SITE_NAME=仓颉包仓库
+      # 默认组织（可选）：企业私有仓库建议配置
+      # - CJREPO_DEFAULT_ORGANIZATION=company
       # 强制认证（可选，默认 false）：开启后下载和索引也需要 token
       # 如果需要私有仓库模式，取消下面这行的注释：
       # - CJREPO_REQUIRE_AUTH=true

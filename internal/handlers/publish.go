@@ -81,12 +81,31 @@ func (h *PublishHandler) HandlePublish(c *fiber.Ctx) error {
 		})
 	}
 
-	// Validate token
-	if !h.validateToken(token) {
-		h.logPublish(organization, packageName, "", "failed", "invalid token", c)
+	// Validate token and get user
+	user, err := h.validateTokenAndGetUser(token)
+	if err != nil {
+		h.logPublish(organization, packageName, "", "failed", "invalid token: "+err.Error(), c)
 		return c.Status(403).JSON(fiber.Map{
 			"error": "invalid token",
 		})
+	}
+
+	// Check organization permission
+	if organization != "" && !user.IsSuperuser {
+		hasPermission, err := h.checkOrganizationPermission(user.ID, organization)
+		if err != nil {
+			log.Printf("[ERROR] Failed to check organization permission: %v", err)
+			h.logPublish(organization, packageName, "", "failed", "permission check error", c)
+			return c.Status(500).JSON(fiber.Map{
+				"error": "failed to check permission",
+			})
+		}
+		if !hasPermission {
+			h.logPublish(organization, packageName, "", "failed", "no permission to publish to organization", c)
+			return c.Status(403).JSON(fiber.Map{
+				"error": "you don't have permission to publish to this organization",
+			})
+		}
 	}
 
 	// 3. Parse binary data
@@ -247,9 +266,37 @@ func (h *PublishHandler) checkPackageExists(org, name, version string) (bool, er
 	return has, err
 }
 
-func (h *PublishHandler) validateToken(token string) bool {
-	has, _ := h.engine.Where("token = ? AND is_active = ?", token, true).Exist(&models.User{})
-	return has
+func (h *PublishHandler) validateTokenAndGetUser(token string) (*models.User, error) {
+	var user models.User
+	has, err := h.engine.Where("token = ? AND is_active = ?", token, true).Get(&user)
+	if err != nil {
+		return nil, err
+	}
+	if !has {
+		return nil, fmt.Errorf("token not found")
+	}
+	return &user, nil
+}
+
+func (h *PublishHandler) checkOrganizationPermission(userID int64, organizationName string) (bool, error) {
+	// 查找组织
+	var org models.Organization
+	has, err := h.engine.Where("name = ? AND deleted_at IS NULL", organizationName).Get(&org)
+	if err != nil {
+		return false, err
+	}
+	if !has {
+		// 组织不存在，允许创建（第一个上传到该组织的人会自动创建它）
+		return true, nil
+	}
+
+	// 检查用户是否是组织成员
+	var member models.OrganizationMember
+	has, err = h.engine.Where("organization_i_d = ? AND user_i_d = ?", org.ID, userID).Get(&member)
+	if err != nil {
+		return false, err
+	}
+	return has, nil
 }
 
 func (h *PublishHandler) logPublish(org, name, version, status, errMsg string, c *fiber.Ctx) {

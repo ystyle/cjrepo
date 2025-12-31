@@ -88,8 +88,16 @@ func startServer() {
 		log.Println("[INFO] REQUIRE_AUTH is DISABLED: download and index requests are public")
 	}
 
+	// Get default organization
+	defaultOrg := os.Getenv("CJREPO_DEFAULT_ORGANIZATION")
+	if defaultOrg != "" {
+		log.Printf("[INFO] Default organization: %s", defaultOrg)
+	} else {
+		log.Println("[INFO] No default organization configured")
+	}
+
 	// 1. Initialize database
-	engine, err := initDatabase(dbPath)
+	engine, err := initDatabase(dbPath, defaultOrg)
 	if err != nil {
 		log.Fatal("Failed to initialize database:", err)
 	}
@@ -119,7 +127,7 @@ func startServer() {
 }
 
 // initDatabase initializes the database connection and creates tables
-func initDatabase(path string) (*xorm.Engine, error) {
+func initDatabase(path string, defaultOrg string) (*xorm.Engine, error) {
 	engine, err := xorm.NewEngine("sqlite3", path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
@@ -135,8 +143,39 @@ func initDatabase(path string) (*xorm.Engine, error) {
 		new(models.PublishLog),
 		new(models.AdminLog),
 		new(models.Upstream),
+		new(models.Organization),
+		new(models.OrganizationMember),
 	); err != nil {
 		return nil, fmt.Errorf("failed to sync database: %w", err)
+	}
+
+	// Create default organization if specified
+	if defaultOrg != "" {
+		var existing models.Organization
+		has, err := engine.Where("name = ?", defaultOrg).Get(&existing)
+		if err != nil {
+			log.Printf("[ERROR] Failed to check default organization: %v", err)
+		} else if !has {
+			// Create default organization
+			org := &models.Organization{
+				Name:        defaultOrg,
+				DisplayName: defaultOrg,
+				Description: "Default organization",
+				IsDefault:   true,
+			}
+			if _, err := engine.Insert(org); err != nil {
+				log.Printf("[ERROR] Failed to create default organization: %v", err)
+			} else {
+				log.Printf("[INFO] Created default organization: %s", defaultOrg)
+			}
+		} else {
+			// Update to default if not already
+			if !existing.IsDefault {
+				existing.IsDefault = true
+				engine.ID(existing.ID).Update(&existing)
+				log.Printf("[INFO] Set existing organization as default: %s", defaultOrg)
+			}
+		}
 	}
 
 	log.Println("Database initialized successfully")
@@ -220,6 +259,16 @@ func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manage
 	admin.Post("/upstreams/:id/test", upstreamHandler.TestUpstream)
 	admin.Get("/upstreams/:id/cache-stats", upstreamHandler.GetUpstreamCacheStats)
 	admin.Post("/upstreams/:id/clear-cache", upstreamHandler.ClearUpstreamCache)
+
+	// Organization management
+	organizationHandler := handlers.NewOrganizationHandler(engine)
+	admin.Get("/organizations", organizationHandler.ListOrganizations)
+	admin.Post("/organizations", organizationHandler.CreateOrganization)
+	admin.Put("/organizations/:id", organizationHandler.UpdateOrganization)
+	admin.Delete("/organizations/:id", organizationHandler.DeleteOrganization)
+	admin.Get("/organizations/:id/members", organizationHandler.GetOrganizationMembers)
+	admin.Post("/organizations/:id/members", organizationHandler.AddMember)
+	admin.Delete("/organizations/:id/members/:user_id", organizationHandler.RemoveMember)
 
 	// SPA fallback - handle all non-API routes
 	app.All("/*", func(c *fiber.Ctx) error {

@@ -80,6 +80,14 @@ func startServer() {
 	}
 	log.Println("Admin key configured")
 
+	// Check if require auth for download and index
+	requireAuth := os.Getenv("CJREPO_REQUIRE_AUTH") == "true"
+	if requireAuth {
+		log.Println("[INFO] REQUIRE_AUTH is ENABLED: download and index requests require token")
+	} else {
+		log.Println("[INFO] REQUIRE_AUTH is DISABLED: download and index requests are public")
+	}
+
 	// 1. Initialize database
 	engine, err := initDatabase(dbPath)
 	if err != nil {
@@ -103,7 +111,7 @@ func startServer() {
 	app.Use(recover.New())
 
 	// 6. Register routes
-	setupRoutes(app, engine, storageMgr, authService, upstreamSync)
+	setupRoutes(app, engine, storageMgr, authService, upstreamSync, requireAuth)
 
 	// 6. Start server
 	log.Printf("Cangjie Depot Server starting on %s", defaultPort)
@@ -136,7 +144,7 @@ func initDatabase(path string) (*xorm.Engine, error) {
 }
 
 // setupRoutes configures all application routes
-func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manager, authService *auth.AuthService, upstreamSync *upstream2.Sync) {
+func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manager, authService *auth.AuthService, upstreamSync *upstream2.Sync, requireAuth bool) {
 	// Health check
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "ok"})
@@ -144,8 +152,8 @@ func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manage
 
 	// cjpm protocol routes
 	publishHandler := handlers.NewPublishHandler(engine, storageMgr)
-	downloadHandler := handlers.NewDownloadHandler(engine, upstreamSync)
-	indexHandler := handlers.NewIndexHandler(engine, upstreamSync)
+	downloadHandler := handlers.NewDownloadHandler(engine, upstreamSync, requireAuth)
+	indexHandler := handlers.NewIndexHandler(engine, upstreamSync, requireAuth)
 
 	// Publish endpoint: POST /pkg/{name}?organization={org}
 	app.Post("/pkg/:name", publishHandler.HandlePublish)

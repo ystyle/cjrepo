@@ -388,6 +388,7 @@ server {
 |--------|------|--------|------|
 | `CJREPO_ADMIN_KEY` | ✅ | - | 管理员密钥，用于管理后台登录 |
 | `CJREPO_SITE_NAME` | ❌ | "仓颉包仓库" | 站点名称 |
+| `CJREPO_REQUIRE_AUTH` | ❌ | `false` | 是否开启强制认证：开启后，包下载和索引查询也需要 token 认证（默认仅发布需要认证） |
 
 ## 命令参考
 
@@ -530,6 +531,37 @@ docker-compose up -d
 rm -rf ~/.cjpm/repository/source/{org}/{name}-{version}
 cjpm check
 ```
+
+### 9. 强制认证（私有仓库模式）
+
+**Q: 如何让下载和索引也需要认证？**
+
+**A**: 设置环境变量 `CJREPO_REQUIRE_AUTH=true` 开启强制认证模式：
+
+**使用 Docker Compose**：
+```yaml
+environment:
+  - CJREPO_ADMIN_KEY=your-admin-key
+  - CJREPO_REQUIRE_AUTH=true  # 开启强制认证
+```
+
+**手动安装**：
+```bash
+export CJREPO_REQUIRE_AUTH=true
+./cjrepo
+```
+
+**开启后**：
+- ✅ 包发布需要 token（始终需要）
+- ✅ 包下载需要 token（开启后需要）
+- ✅ 索引查询需要 token（开启后需要）
+
+**使用场景**：
+- 私有企业仓库：所有操作都需要认证
+- 防止未授权访问：保护包和索引不被公开访问
+- 配合上游代理：为私有包提供统一入口
+
+**上游配置**：如果上游仓库也开启了认证，在上游管理中配置 `auth_token` 即可。
 
 ## 数据库管理
 

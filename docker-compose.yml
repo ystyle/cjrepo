@@ -18,6 +18,9 @@ services:
       - CJREPO_ADMIN_KEY=your-secret-admin-key-change-me-in-production
       # 站点名称（可选）
       - CJREPO_SITE_NAME=仓颉包仓库
+      # 强制认证（可选，默认 false）：开启后下载和索引也需要 token
+      # 如果需要私有仓库模式，取消下面这行的注释：
+      # - CJREPO_REQUIRE_AUTH=true
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8060/health"]

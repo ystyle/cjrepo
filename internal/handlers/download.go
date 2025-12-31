@@ -27,13 +27,15 @@ type DownloadHandler struct {
 		GetFile(org, name, version string) (*interface{}, error)
 	}
 	upstreamSync UpstreamSync
+	requireAuth  bool // 是否需要认证
 }
 
 // NewDownloadHandler creates a new download handler
-func NewDownloadHandler(engine *xorm.Engine, upstreamSync UpstreamSync) *DownloadHandler {
+func NewDownloadHandler(engine *xorm.Engine, upstreamSync UpstreamSync, requireAuth bool) *DownloadHandler {
 	return &DownloadHandler{
 		engine:       engine,
 		upstreamSync: upstreamSync,
+		requireAuth:  requireAuth,
 	}
 }
 
@@ -45,6 +47,22 @@ func (h *DownloadHandler) HandleDownload(c *fiber.Ctx) error {
 
 	log.Printf("[DEBUG] Download request: package=%s, version=%s, org=%s",
 		packageName, version, organization)
+
+	// 如果开启强制认证，验证 token
+	if h.requireAuth {
+		token := c.Get("Authorization")
+		if token == "" {
+			return c.Status(401).JSON(fiber.Map{
+				"error": "authorization required",
+			})
+		}
+
+		if !h.validateToken(token) {
+			return c.Status(403).JSON(fiber.Map{
+				"error": "invalid token",
+			})
+		}
+	}
 
 	// Query package from database
 	var pkg models.Package
@@ -129,4 +147,10 @@ func (h *DownloadHandler) HandleDownload(c *fiber.Ctx) error {
 
 	// Send data directly
 	return c.Send(data)
+}
+
+// validateToken 验证 token 是否有效
+func (h *DownloadHandler) validateToken(token string) bool {
+	has, _ := h.engine.Where("token = ? AND is_active = ?", token, true).Exist(&models.User{})
+	return has
 }

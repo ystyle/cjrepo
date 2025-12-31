@@ -14,13 +14,15 @@ import (
 type IndexHandler struct {
 	engine       *xorm.Engine
 	upstreamSync UpstreamSync
+	requireAuth  bool // 是否需要认证
 }
 
 // NewIndexHandler creates a new index handler
-func NewIndexHandler(engine *xorm.Engine, upstreamSync UpstreamSync) *IndexHandler {
+func NewIndexHandler(engine *xorm.Engine, upstreamSync UpstreamSync, requireAuth bool) *IndexHandler {
 	return &IndexHandler{
 		engine:       engine,
 		upstreamSync: upstreamSync,
+		requireAuth:  requireAuth,
 	}
 }
 
@@ -44,6 +46,22 @@ func (h *IndexHandler) HandleIndex(c *fiber.Ctx) error {
 
 	log.Printf("[DEBUG] Index query: first=%s, second=%s, fullName=%s, org=%s",
 		first, second, fullName, organization)
+
+	// 如果开启强制认证，验证 token
+	if h.requireAuth {
+		token := c.Get("Authorization")
+		if token == "" {
+			return c.Status(401).JSON(fiber.Map{
+				"error": "authorization required",
+			})
+		}
+
+		if !h.validateToken(token) {
+			return c.Status(403).JSON(fiber.Map{
+				"error": "invalid token",
+			})
+		}
+	}
 
 	// Query matching packages by exact name
 	var packages []models.Package
@@ -152,4 +170,10 @@ func (h *IndexHandler) HandleIndex(c *fiber.Ctx) error {
 // fetchIndexFromUpstream 从上游获取索引数据
 func (h *IndexHandler) fetchIndexFromUpstream(upstream *models.Upstream, name, org string) ([]byte, error) {
 	return h.upstreamSync.FetchIndex(upstream, name, org)
+}
+
+// validateToken 验证 token 是否有效
+func (h *IndexHandler) validateToken(token string) bool {
+	has, _ := h.engine.Where("token = ? AND is_active = ?", token, true).Exist(&models.User{})
+	return has
 }

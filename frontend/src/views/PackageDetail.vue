@@ -670,7 +670,7 @@ onMounted(() => {
                     <code>{{ getDependencyTOML() }}</code>
                   </div>
                   <div class="usage-card-footer">
-                    <span class="usage-tip">添加到 cangjie-repo.toml 的 dependencies 部分</span>
+                    <span class="usage-tip">添加到 cjpm.toml 的 dependencies 部分</span>
                   </div>
                 </div>
               </div>

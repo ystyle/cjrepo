@@ -16,6 +16,7 @@ import {
   ElInputNumber,
   ElIcon,
   ElTooltip,
+  ElPopover,
 } from 'element-plus'
 import {
   Plus,
@@ -24,6 +25,7 @@ import {
   Connection,
   Refresh,
   InfoFilled,
+  DeleteFilled,
 } from '@element-plus/icons-vue'
 import {
   getUpstreams,
@@ -31,6 +33,8 @@ import {
   updateUpstream,
   deleteUpstream,
   testUpstream,
+  getUpstreamCacheStats,
+  clearUpstreamCache,
   type Upstream,
   type CreateUpstreamRequest,
   type UpdateUpstreamRequest,
@@ -190,6 +194,83 @@ const formatCacheTTL = (ttl: number) => {
   return `${hours}小时`
 }
 
+// 格式化文件大小
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${(bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 2)} ${sizes[i]}`
+}
+
+// 显示缓存统计
+const showCacheStats = async (upstream: Upstream) => {
+  try {
+    const stats = await getUpstreamCacheStats(upstream.id)
+
+    ElMessageBox.alert(
+      `
+        <div style="text-align: left;">
+          <p><strong>上游名称:</strong> ${upstream.name}</p>
+          <p><strong>缓存包数:</strong> ${stats.package_count}</p>
+          <p><strong>占用空间:</strong> ${formatFileSize(stats.total_size)}</p>
+          ${
+            stats.package_count > 0
+              ? `<p style="margin-top: 16px;"><strong>最近10个包:</strong></p>
+                 <ul style="max-height: 200px; overflow-y: auto; padding-left: 20px;">
+                   ${stats.packages.slice(0, 10).map(
+                     (p: any) => `<li>${p.name}-${p.version} (${formatFileSize(p.tarball_size)})</li>`
+                   ).join('')}
+                 </ul>`
+              : ''
+          }
+        </div>
+      `,
+      '缓存统计',
+      {
+        dangerouslyUseHTMLString: true,
+        confirmButtonText: stats.package_count > 0 ? '清除缓存' : '关闭',
+        cancelButtonText: '取消',
+        showCancelButton: true,
+        type: stats.package_count > 0 ? 'warning' : 'info',
+      }
+    ).then(() => {
+      if (stats.package_count > 0) {
+        handleClearCache(upstream)
+      }
+    }).catch(() => {
+      // 用户点击取消
+    })
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.error || '获取缓存统计失败')
+  }
+}
+
+// 清除上游缓存
+const handleClearCache = async (upstream: Upstream) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要清除上游 "${upstream.name}" 的所有缓存包吗？此操作不可恢复。`,
+      '清除缓存确认',
+      {
+        confirmButtonText: '确定清除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        dangerouslyUseHTMLString: true,
+      }
+    )
+
+    const result = await clearUpstreamCache(upstream.id)
+    ElMessage.success(
+      `清除成功！删除了 ${result.deleted_count} 个包，释放了 ${formatFileSize(result.freed_space)} 空间`
+    )
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.error || '清除缓存失败')
+    }
+  }
+}
+
 onMounted(() => {
   loadUpstreams()
 })
@@ -255,7 +336,7 @@ onMounted(() => {
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="250" align="center" fixed="right">
+        <el-table-column label="操作" width="320" align="center" fixed="right">
           <template #default="{ row }">
             <el-button
               size="small"
@@ -267,6 +348,13 @@ onMounted(() => {
             </el-button>
             <el-button size="small" :icon="Edit" @click="openEditDialog(row)">
               编辑
+            </el-button>
+            <el-button
+              size="small"
+              type="warning"
+              @click="showCacheStats(row)"
+            >
+              缓存
             </el-button>
             <el-button
               size="small"

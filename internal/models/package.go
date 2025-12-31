@@ -31,6 +31,10 @@ type Package struct {
 	// Statistics
 	DownloadCount int64     `xorm:"default 0" json:"download_count"`
 
+	// Upstream source (if synced from upstream)
+	UpstreamID int64  `xorm:"'upstream_i_d' index" json:"upstream_id"`  // Which upstream this package came from
+	UpstreamName string `json:"upstream_name"` // Cached upstream name for display
+
 	// Timestamps
 	CreatedAt time.Time `xorm:"created" json:"created_at"`
 	UpdatedAt time.Time `xorm:"updated" json:"updated_at"`

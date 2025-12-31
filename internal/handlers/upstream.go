@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -231,5 +232,126 @@ func (h *UpstreamHandler) TestUpstream(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"success": true,
 		"message": "upstream connection test passed",
+	})
+}
+
+// UpstreamCacheStats 上游缓存统计
+type UpstreamCacheStats struct {
+	PackageCount int    `json:"package_count"` // 包数量
+	TotalSize    int64  `json:"total_size"`    // 总大小（字节）
+	Packages     []models.Package `json:"packages"` // 包列表
+}
+
+// GetUpstreamCacheStats 获取上游缓存统计
+func (h *UpstreamHandler) GetUpstreamCacheStats(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "id is required",
+		})
+	}
+
+	var upstream models.Upstream
+	has, err := h.engine.Where("id = ?", id).Get(&upstream)
+	if err != nil {
+		log.Printf("[ERROR] Failed to find upstream: %v", err)
+		return c.Status(500).JSON(fiber.Map{
+			"error": "failed to find upstream",
+		})
+	}
+	if !has {
+		return c.Status(404).JSON(fiber.Map{
+			"error": "upstream not found",
+		})
+	}
+
+	// 查询该上游的所有包
+	var packages []models.Package
+	err = h.engine.Where("upstream_i_d = ?", upstream.ID).Find(&packages)
+	if err != nil {
+		log.Printf("[ERROR] Failed to query packages: %v", err)
+		return c.Status(500).JSON(fiber.Map{
+			"error": "failed to query packages",
+		})
+	}
+
+	// 计算总大小
+	var totalSize int64
+	for _, pkg := range packages {
+		totalSize += pkg.TarballSize
+	}
+
+	stats := UpstreamCacheStats{
+		PackageCount: len(packages),
+		TotalSize:    totalSize,
+		Packages:     packages,
+	}
+
+	return c.JSON(stats)
+}
+
+// ClearUpstreamCache 清除上游缓存
+func (h *UpstreamHandler) ClearUpstreamCache(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "id is required",
+		})
+	}
+
+	var upstream models.Upstream
+	has, err := h.engine.Where("id = ?", id).Get(&upstream)
+	if err != nil {
+		log.Printf("[ERROR] Failed to find upstream: %v", err)
+		return c.Status(500).JSON(fiber.Map{
+			"error": "failed to find upstream",
+		})
+	}
+	if !has {
+		return c.Status(404).JSON(fiber.Map{
+			"error": "upstream not found",
+		})
+	}
+
+	// 查询该上游的所有包
+	var packages []models.Package
+	err = h.engine.Where("upstream_i_d = ?", upstream.ID).Find(&packages)
+	if err != nil {
+		log.Printf("[ERROR] Failed to query packages: %v", err)
+		return c.Status(500).JSON(fiber.Map{
+			"error": "failed to query packages",
+		})
+	}
+
+	// 删除包文件和数据库记录
+	deletedCount := 0
+	freedSpace := int64(0)
+	for _, pkg := range packages {
+		// 删除物理文件
+		if pkg.TarballPath != "" {
+			if err := os.Remove(pkg.TarballPath); err != nil {
+				// 文件可能已经不存在，记录日志但继续
+				log.Printf("[WARN] Failed to delete file %s: %v", pkg.TarballPath, err)
+			} else {
+				freedSpace += pkg.TarballSize
+			}
+		}
+
+		// 删除数据库记录（硬删除）
+		_, err = h.engine.ID(pkg.ID).Delete(&models.Package{})
+		if err != nil {
+			log.Printf("[ERROR] Failed to delete package %d: %v", pkg.ID, err)
+		} else {
+			deletedCount++
+		}
+	}
+
+	log.Printf("[INFO] Cleared cache for upstream %s: deleted %d packages, freed %d bytes",
+		upstream.Name, deletedCount, freedSpace)
+
+	return c.JSON(fiber.Map{
+		"message":      "cache cleared successfully",
+		"deleted_count": deletedCount,
+		"freed_space":  freedSpace,
 	})
 }

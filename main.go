@@ -210,6 +210,8 @@ func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manage
 	admin.Put("/upstreams/:id", upstreamHandler.UpdateUpstream)
 	admin.Delete("/upstreams/:id", upstreamHandler.DeleteUpstream)
 	admin.Post("/upstreams/:id/test", upstreamHandler.TestUpstream)
+	admin.Get("/upstreams/:id/cache-stats", upstreamHandler.GetUpstreamCacheStats)
+	admin.Post("/upstreams/:id/clear-cache", upstreamHandler.ClearUpstreamCache)
 
 	// SPA fallback - handle all non-API routes
 	app.All("/*", func(c *fiber.Ctx) error {

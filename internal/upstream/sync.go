@@ -220,6 +220,8 @@ func (s *Sync) FetchAndSavePackage(upstream *models.Upstream, name, version, org
 	pkg.TarballPath = storagePath
 	pkg.TarballSize = int64(len(tarballData))
 	pkg.TarballSHA256 = fmt.Sprintf("%x", sha256.Sum256(tarballData))
+	pkg.UpstreamID = upstream.ID
+	pkg.UpstreamName = upstream.Name
 
 	// 如果包已存在，更新；否则插入
 	if has {

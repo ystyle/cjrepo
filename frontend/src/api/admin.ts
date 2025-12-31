@@ -324,4 +324,34 @@ export const testUpstream = (id: number) => {
   })
 }
 
+// 上游缓存统计
+export interface UpstreamCacheStats {
+  package_count: number
+  total_size: number
+  packages: Package[]
+}
+
+// 获取上游缓存统计
+export const getUpstreamCacheStats = (id: number) => {
+  return request<UpstreamCacheStats>({
+    url: `/admin/upstreams/${id}/cache-stats`,
+    method: 'get',
+  })
+}
+
+// 清除上游缓存响应
+export interface ClearCacheResponse {
+  message: string
+  deleted_count: number
+  freed_space: number
+}
+
+// 清除上游缓存
+export const clearUpstreamCache = (id: number) => {
+  return request<ClearCacheResponse>({
+    url: `/admin/upstreams/${id}/clear-cache`,
+    method: 'post',
+  })
+}
+
 

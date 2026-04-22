@@ -201,7 +201,7 @@ onMounted(() => {
 
       <el-table v-else :data="packages" v-loading="loading" stripe>
         <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="name" label="包名" width="180" show-overflow-tooltip />
+        <el-table-column prop="name" label="包名" width="280" show-overflow-tooltip />
         <el-table-column prop="version" label="最新版本" width="110">
           <template #default="{ row }">
             <el-tag type="success" size="small">{{ row.version }}</el-tag>

@@ -161,7 +161,10 @@ func (h *IndexHandler) HandleIndex(c *fiber.Ctx) error {
 	}
 
 	if !hasIndex {
-		log.Printf("[WARN] No valid index generated for %s", fullName)
+		log.Printf("[WARN] No valid index generated for %s, returning 404", fullName)
+		return c.Status(404).JSON(fiber.Map{
+			"error": "package not found",
+		})
 	}
 
 	return nil

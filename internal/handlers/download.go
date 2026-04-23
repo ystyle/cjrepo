@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"xorm.io/xorm"
 
+	"ystyle.top/go/cjrepo/internal/auth"
 	"ystyle.top/go/cjrepo/internal/models"
 )
 
@@ -48,7 +49,7 @@ func (h *DownloadHandler) HandleDownload(c *fiber.Ctx) error {
 	log.Printf("[DEBUG] Download request: package=%s, version=%s, org=%s",
 		packageName, version, organization)
 
-	// 如果开启强制认证，验证 token
+	// 如果开启强制认证，验证 token 并检查权限
 	if h.requireAuth {
 		token := c.Get("Authorization")
 		if token == "" {
@@ -57,10 +58,21 @@ func (h *DownloadHandler) HandleDownload(c *fiber.Ctx) error {
 			})
 		}
 
-		if !h.validateToken(token) {
+		user, err := h.validateTokenAndGetUser(token)
+		if err != nil {
 			return c.Status(403).JSON(fiber.Map{
 				"error": "invalid token",
 			})
+		}
+
+		// Check permission using team-based system
+		if !user.IsSuperuser {
+			checker := auth.NewPermissionChecker(h.engine)
+			if !checker.CheckPermission(user.ID, organization, packageName, "read") {
+				return c.Status(403).JSON(fiber.Map{
+					"error": "permission denied",
+				})
+			}
 		}
 	}
 
@@ -149,8 +161,15 @@ func (h *DownloadHandler) HandleDownload(c *fiber.Ctx) error {
 	return c.Send(data)
 }
 
-// validateToken 验证 token 是否有效
-func (h *DownloadHandler) validateToken(token string) bool {
-	has, _ := h.engine.Where("token = ? AND is_active = ?", token, true).Exist(&models.User{})
-	return has
+// validateTokenAndGetUser 验证 token 并返回用户
+func (h *DownloadHandler) validateTokenAndGetUser(token string) (*models.User, error) {
+	var user models.User
+	has, err := h.engine.Where("token = ? AND is_active = ?", token, true).Get(&user)
+	if err != nil {
+		return nil, err
+	}
+	if !has {
+		return nil, fmt.Errorf("token not found")
+	}
+	return &user, nil
 }

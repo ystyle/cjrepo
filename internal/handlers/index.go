@@ -145,6 +145,23 @@ func (h *IndexHandler) HandleIndex(c *fiber.Ctx) error {
 				if cjcVersion, ok := idxMap["cjc-version"].(string); ok {
 					artifactIndex["cjc-version"] = cjcVersion
 				}
+				// 提取依赖信息
+				if deps, ok := idxMap["dependencies"].([]interface{}); ok {
+					artifactIndex["dependencies"] = deps
+				}
+				if testDeps, ok := idxMap["test-dependencies"].([]interface{}); ok {
+					artifactIndex["testDependencies"] = testDeps
+				}
+				if scriptDeps, ok := idxMap["script-dependencies"].([]interface{}); ok {
+					artifactIndex["scriptDependencies"] = scriptDeps
+				}
+				// 提取 yanked 和 index-version
+				if yanked, ok := idxMap["yanked"].(bool); ok {
+					artifactIndex["yanked"] = yanked
+				}
+				if indexVersion, ok := idxMap["index-version"].(float64); ok {
+					artifactIndex["index-version"] = int(indexVersion)
+				}
 			}
 		} else {
 			// 使用数据库中的 SHA256

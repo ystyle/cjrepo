@@ -135,8 +135,14 @@ func startServer() {
 	setupRoutes(app, engine, storageMgr, authService, upstreamSync, requireAuth)
 
 	// 6. Start server
-	log.Printf("Cangjie Depot Server starting on %s", defaultPort)
-	log.Fatal(app.Listen(defaultPort))
+	port := os.Getenv("CJREPO_PORT")
+	if port == "" {
+		port = defaultPort
+	} else if !strings.HasPrefix(port, ":") {
+		port = ":" + port
+	}
+	log.Printf("Cangjie Depot Server starting on %s", port)
+	log.Fatal(app.Listen(port))
 }
 
 // initDatabase initializes the database connection and creates tables

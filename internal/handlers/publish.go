@@ -13,9 +13,10 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"xorm.io/xorm"
 
+	"ystyle.top/go/cjrepo/internal/auth"
 	"ystyle.top/go/cjrepo/internal/models"
-	"ystyle.top/go/cjrepo/internal/storage"
 	"ystyle.top/go/cjrepo/internal/protocol"
+	"ystyle.top/go/cjrepo/internal/storage"
 )
 
 // PublishHandler handles package publishing
@@ -90,24 +91,6 @@ func (h *PublishHandler) HandlePublish(c *fiber.Ctx) error {
 		})
 	}
 
-	// Check organization permission
-	if organization != "" && !user.IsSuperuser {
-		hasPermission, err := h.checkOrganizationPermission(user.ID, organization)
-		if err != nil {
-			log.Printf("[ERROR] Failed to check organization permission: %v", err)
-			h.logPublish(organization, packageName, "", "failed", "permission check error", c)
-			return c.Status(500).JSON(fiber.Map{
-				"error": "failed to check permission",
-			})
-		}
-		if !hasPermission {
-			h.logPublish(organization, packageName, "", "failed", "no permission to publish to organization", c)
-			return c.Status(403).JSON(fiber.Map{
-				"error": "you don't have permission to publish to this organization",
-			})
-		}
-	}
-
 	// 3. Parse binary data
 	body := c.BodyRaw()
 	log.Printf("[DEBUG] Request body size: %d bytes", len(body))
@@ -157,6 +140,32 @@ func (h *PublishHandler) HandlePublish(c *fiber.Ctx) error {
 		})
 	}
 
+	// 5.5 Check permission using team-based permission system
+	if !user.IsSuperuser {
+		checker := auth.NewPermissionChecker(h.engine)
+		versionExists, _ := h.checkPackageExists(organization, packageName, metaData.Version)
+
+		var requiredPerm string
+		if versionExists {
+			requiredPerm = "overwrite"
+		} else {
+			requiredPerm = "write"
+		}
+
+		if !checker.CheckPermission(user.ID, organization, packageName, requiredPerm) {
+			if versionExists {
+				h.logPublish(organization, packageName, metaData.Version, "failed", "need overwrite permission", c)
+				return c.Status(403).JSON(fiber.Map{
+					"error": "version already exists, need overwrite permission",
+				})
+			}
+			h.logPublish(organization, packageName, metaData.Version, "failed", "permission denied", c)
+			return c.Status(403).JSON(fiber.Map{
+				"error": "permission denied",
+			})
+		}
+	}
+
 	// 6. Validate SHA256
 	expectedSHA256, ok := metaData.Index["sha256sum"].(string)
 	if !ok {
@@ -177,20 +186,20 @@ func (h *PublishHandler) HandlePublish(c *fiber.Ctx) error {
 		})
 	}
 
-	// 7. Check if package already exists
-	exists, err := h.checkPackageExists(organization, packageName, metaData.Version)
-	if err != nil {
-		log.Printf("[ERROR] Failed to check package existence: %v", err)
-		h.logPublish(organization, packageName, metaData.Version, "failed", "database error", c)
-		return c.Status(500).JSON(fiber.Map{
-			"error": "database error",
-		})
-	}
-	if exists {
-		h.logPublish(organization, packageName, metaData.Version, "failed", "package version already exists", c)
-		return c.Status(409).JSON(fiber.Map{
-			"error": "package version already exists",
-		})
+	// 7. Handle existing version (overwrite case)
+	versionExists, _ := h.checkPackageExists(organization, packageName, metaData.Version)
+	if versionExists {
+		log.Printf("[INFO] Overwriting existing version: %s/%s-%s", organization, packageName, metaData.Version)
+		// Delete old package record
+		_, err := h.engine.Where("organization = ? AND name = ? AND version = ? AND deleted_at IS NULL",
+			organization, packageName, metaData.Version).Delete(&models.Package{})
+		if err != nil {
+			log.Printf("[ERROR] Failed to delete old package: %v", err)
+			h.logPublish(organization, packageName, metaData.Version, "failed", "failed to delete old version", c)
+			return c.Status(500).JSON(fiber.Map{
+				"error": "failed to overwrite package",
+			})
+		}
 	}
 
 	// 8. Save file

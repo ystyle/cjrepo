@@ -52,7 +52,7 @@ RUN BUILD_DATE=$(date -u '+%Y-%m-%d_%H:%M:%S') && \
     GIT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || echo "dev") && \
     echo "Build info: $BUILD_DATE, $GIT_COMMIT, $GIT_VERSION" && \
     CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
-    -ldflags "-w -s -X 'ystyle.top/go/cjrepo/internal/version.buildDate=$BUILD_DATE' -X 'ystyle.top/go/cjrepo/internal/version.gitCommit=$GIT_COMMIT' -X 'ystyle.top/go/cjrepo/internal/version.gitVersion=$GIT_VERSION'" \
+    -ldflags "-w -s -X 'main.buildDate=$BUILD_DATE' -X 'main.gitCommit=$GIT_COMMIT' -X 'main.gitVersion=$GIT_VERSION'" \
     -o cjrepo .
 
 # 第三阶段：运行阶段

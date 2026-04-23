@@ -8,7 +8,7 @@
 - `cjpm 源码`： /home/ystyle/Projects/cangjie_tools/cjpm
 
 ## 相关工具
-- `gh` 访问github
+- `gh` 访问github, 回复和提交需要经过用户同意
 - 代理： `export https_proxy=http://192.168.3.6:1080`
 
 ## 构建

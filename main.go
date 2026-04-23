@@ -298,9 +298,6 @@ func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manage
 	admin.Post("/organizations", organizationHandler.CreateOrganization)
 	admin.Put("/organizations/:id", organizationHandler.UpdateOrganization)
 	admin.Delete("/organizations/:id", organizationHandler.DeleteOrganization)
-	admin.Get("/organizations/:id/members", organizationHandler.GetOrganizationMembers)
-	admin.Post("/organizations/:id/members", organizationHandler.AddMember)
-	admin.Delete("/organizations/:id/members/:user_id", organizationHandler.RemoveMember)
 
 	// Team management
 	teamHandler := handlers.NewTeamHandler(engine)

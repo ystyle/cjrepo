@@ -1,0 +1,65 @@
+
+[2026-04-23T23:33:40.356138] (+0.0s) SESSION_START
+------------------------------------------------------------
+session_id: session_2cd53e6c
+
+
+[2026-04-23T23:33:40.356298] (+0.0s) COMMAND_EXECUTION
+------------------------------------------------------------
+command: bash
+working_directory: /home/ystyle/Projects/cjrepo
+
+
+[2026-04-23T23:33:40.594634] (+0.239s) SESSION_STATE
+------------------------------------------------------------
+state: initialized
+details: {'command': 'bash', 'tmux_session': 'mcp_session_2cd53e6c', 'working_directory': '/home/ystyle/Projects/cjrepo'}
+
+
+[2026-04-23T23:33:48.027902] (+7.672s) INPUT_SENT
+------------------------------------------------------------
+Input Type: tmux_input
+Input Text: ./cjrepo &
+
+Input Repr: './cjrepo &\n'
+
+
+[2026-04-23T23:33:54.314423] (+13.958s) INPUT_SENT
+------------------------------------------------------------
+Input Type: tmux_input
+Input Text: export CJREPO_ADMIN_KEY=test-admin-key-2024 && ./cjrepo &
+
+Input Repr: 'export CJREPO_ADMIN_KEY=test-admin-key-2024 && ./cjrepo &\n'
+
+
+[2026-04-23T23:34:01.693657] (+21.338s) INPUT_SENT
+------------------------------------------------------------
+Input Type: tmux_input
+Input Text: lsof -ti:8060 | xargs kill -9 2>/dev/null; sleep 1; export CJREPO_ADMIN_KEY=test-admin-key-2024 && ./cjrepo &
+
+Input Repr: 'lsof -ti:8060 | xargs kill -9 2>/dev/null; sleep 1; export CJREPO_ADMIN_KEY=test-admin-key-2024 && ./cjrepo &\n'
+
+
+[2026-04-23T23:34:34.958870] (+54.603s) INPUT_SENT
+------------------------------------------------------------
+Input Type: tmux_input
+Input Text: lsof -ti:18060 | xargs kill -9 2>/dev/null; sleep 1; export CJREPO_ADMIN_KEY=test-admin-key-2024 CJREPO_PORT=18060 && ./cjrepo &
+
+Input Repr: 'lsof -ti:18060 | xargs kill -9 2>/dev/null; sleep 1; export CJREPO_ADMIN_KEY=test-admin-key-2024 CJREPO_PORT=18060 && ./cjrepo &\n'
+
+
+[2026-04-23T23:35:37.830089] (+117.474s) INPUT_SENT
+------------------------------------------------------------
+Input Type: tmux_input
+Input Text: lsof -ti:18060 | xargs kill -9 2>/dev/null; sleep 1; export CJREPO_ADMIN_KEY=test-admin-key-2024 CJREPO_PORT=18060 && ./cjrepo &
+
+Input Repr: 'lsof -ti:18060 | xargs kill -9 2>/dev/null; sleep 1; export CJREPO_ADMIN_KEY=test-admin-key-2024 CJREPO_PORT=18060 && ./cjrepo &\n'
+
+
+[2026-04-23T23:40:43.440679] (+423.085s) INPUT_SENT
+------------------------------------------------------------
+Input Type: tmux_input
+Input Text: lsof -ti:18060 | xargs kill -9 2>/dev/null
+
+Input Repr: 'lsof -ti:18060 | xargs kill -9 2>/dev/null\n'
+

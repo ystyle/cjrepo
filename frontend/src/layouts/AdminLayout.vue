@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   ElContainer,
@@ -7,11 +8,17 @@ import {
   ElMenuItem,
   ElHeader,
 } from 'element-plus'
-import { House, Box, Document, DataAnalysis, User, Connection, Setting } from '@element-plus/icons-vue'
+import { House, Box, Document, DataAnalysis, User, Connection, Setting, InfoFilled } from '@element-plus/icons-vue'
 import { siteName } from '../stores/site'
 import CjBox from '../components/CjBox.vue'
+import AboutDialog from '../components/AboutDialog.vue'
 
 const route = useRoute()
+const aboutDialogRef = ref<InstanceType<typeof AboutDialog>>()
+
+const openAbout = () => {
+  aboutDialogRef.value?.open()
+}
 </script>
 
 <template>
@@ -52,9 +59,15 @@ const route = useRoute()
           <el-icon><Document /></el-icon>
           <span>操作日志</span>
         </el-menu-item>
+      </el-menu>
+      <el-menu class="bottom-menu">
         <el-menu-item index="/">
           <el-icon><House /></el-icon>
           <span>返回首页</span>
+        </el-menu-item>
+        <el-menu-item class="about-menu" @click="openAbout">
+          <el-icon><InfoFilled /></el-icon>
+          <span>关于</span>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -67,6 +80,7 @@ const route = useRoute()
       </el-main>
     </el-container>
   </el-container>
+  <AboutDialog ref="aboutDialogRef" />
 </template>
 
 <style scoped>
@@ -74,6 +88,8 @@ const route = useRoute()
   background: #001529;
   color: white;
   height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .admin-header {
@@ -117,8 +133,18 @@ const route = useRoute()
 .admin-menu {
   border: none;
   background: transparent;
-  height: calc(100vh - 80px);
+  flex: 1;
   overflow-y: auto;
+}
+
+.bottom-menu {
+  margin-top: auto;
+  border: none;
+  background: transparent;
+}
+
+.about-menu {
+  cursor: pointer;
 }
 
 :deep(.el-menu) {

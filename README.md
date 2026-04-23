@@ -245,7 +245,7 @@ Dashboard 实时展示包数量、用户数、存储使用情况和发布统计�
 - 清理历史日志（3个月/半年/1年）释放空间
 
 #### 上游源管理 (`/admin/upstreams`)
-- 配置官方中央库或其他 cjrepo 实例为上游（默认：`https://pkg.cangjie-lang.cn/cjpm`）
+- 配置官方中央库或其他 cjrepo 实例为上游（默认：`https://pkg.cangjie-lang.cn/registry`）
 - 启用/禁用上游源
 - 测试上游连接
 - 查看缓存统计（包数量、占用空间、包列表）

@@ -8,7 +8,7 @@ import {
   ElMenuItem,
   ElHeader,
 } from 'element-plus'
-import { House, Box, Document, DataAnalysis, User, Connection, Setting, InfoFilled } from '@element-plus/icons-vue'
+import { House, Box, Document, DataAnalysis, User, Connection, Setting, InfoFilled, Key } from '@element-plus/icons-vue'
 import { siteName } from '../stores/site'
 import CjBox from '../components/CjBox.vue'
 import AboutDialog from '../components/AboutDialog.vue'
@@ -50,6 +50,10 @@ const openAbout = () => {
         <el-menu-item index="/admin/organizations">
           <el-icon><Setting /></el-icon>
           <span>组织管理</span>
+        </el-menu-item>
+        <el-menu-item index="/admin/teams">
+          <el-icon><Key /></el-icon>
+          <span>团队管理</span>
         </el-menu-item>
         <el-menu-item index="/admin/upstreams">
           <el-icon><Connection /></el-icon>

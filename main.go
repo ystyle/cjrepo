@@ -158,6 +158,10 @@ func initDatabase(path string, defaultOrg string) (*xorm.Engine, error) {
 		new(models.Upstream),
 		new(models.Organization),
 		new(models.OrganizationMember),
+		new(models.Team),
+		new(models.TeamOrganization),
+		new(models.TeamPackage),
+		new(models.TeamMember),
 	); err != nil {
 		return nil, fmt.Errorf("failed to sync database: %w", err)
 	}

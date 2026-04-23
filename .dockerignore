@@ -1,6 +1,10 @@
-# Git
-.git
+# Git (保留 .git 用于构建时获取版本信息)
 .gitignore
+# 只保留 .git 的必要部分
+.git/*
+!.git/HEAD
+!.git/refs/
+!.git/objects/
 
 # 数据和存储目录（会被 volume 挂载）
 data/

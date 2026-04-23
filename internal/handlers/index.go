@@ -126,12 +126,12 @@ func (h *IndexHandler) HandleIndex(c *fiber.Ctx) error {
 		// Build ArtifactIndex structure
 		// 优先使用 index 字段，如果没有则使用包的基本信息
 		artifactIndex := fiber.Map{
-			"organization":      pkg.Organization,
-			"name":              pkg.Name,
-			"version":           pkg.Version,
-			"dependencies":      []interface{}{},
-			"testDependencies":  []interface{}{},
-			"scriptDependencies": []interface{}{},
+			"organization":       pkg.Organization,
+			"name":               pkg.Name,
+			"version":            pkg.Version,
+			"dependencies":       []interface{}{},
+			"test-dependencies":  []interface{}{},
+			"script-dependencies": []interface{}{},
 		}
 
 		// 如果有 index 字段，使用其中的信息
@@ -150,10 +150,10 @@ func (h *IndexHandler) HandleIndex(c *fiber.Ctx) error {
 					artifactIndex["dependencies"] = deps
 				}
 				if testDeps, ok := idxMap["test-dependencies"].([]interface{}); ok {
-					artifactIndex["testDependencies"] = testDeps
+					artifactIndex["test-dependencies"] = testDeps
 				}
 				if scriptDeps, ok := idxMap["script-dependencies"].([]interface{}); ok {
-					artifactIndex["scriptDependencies"] = scriptDeps
+					artifactIndex["script-dependencies"] = scriptDeps
 				}
 				// 提取 yanked 和 index-version
 				if yanked, ok := idxMap["yanked"].(bool); ok {

@@ -9,6 +9,7 @@ import (
 	"xorm.io/xorm"
 
 	"ystyle.top/go/cjrepo/internal/models"
+	"ystyle.top/go/cjrepo/internal/version"
 )
 
 // PublicHandler 公开 API 处理器
@@ -25,11 +26,14 @@ func NewPublicHandler(engine *xorm.Engine) *PublicHandler {
 
 // StatsResponse 统计信息响应
 type StatsResponse struct {
-	Packages     int64  `json:"packages"`
-	Users        int64  `json:"users"`
-	Versions     int64  `json:"versions"`
-	Downloads    int64  `json:"downloads"`
-	SiteName     string `json:"siteName"`
+	Packages    int64  `json:"packages"`
+	Users       int64  `json:"users"`
+	Versions    int64  `json:"versions"`
+	Downloads   int64  `json:"downloads"`
+	SiteName    string `json:"siteName"`
+	BuildDate   string `json:"buildDate"`
+	GitCommit   string `json:"gitCommit"`
+	GitVersion  string `json:"gitVersion"`
 }
 
 // GetStats 获取公开统计信息
@@ -53,12 +57,17 @@ func (h *PublicHandler) GetStats(c *fiber.Ctx) error {
 	downloadCountFloat, _ := h.engine.Table("packages").Sum(&models.Package{}, "download_count")
 	downloadCount := int64(downloadCountFloat)
 
+	buildDate, gitCommit, gitVersion := version.GetBuildInfo()
+
 	return c.JSON(StatsResponse{
-		Packages:  packageCount,
-		Users:     userCount,
-		Versions:  versionCount,
-		Downloads: downloadCount,
-		SiteName:  siteName,
+		Packages:   packageCount,
+		Users:      userCount,
+		Versions:   versionCount,
+		Downloads:  downloadCount,
+		SiteName:   siteName,
+		BuildDate:  buildDate,
+		GitCommit:  gitCommit,
+		GitVersion: gitVersion,
 	})
 }
 

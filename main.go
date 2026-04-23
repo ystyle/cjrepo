@@ -20,17 +20,20 @@ import (
 	"ystyle.top/go/cjrepo/internal/models"
 	"ystyle.top/go/cjrepo/internal/storage"
 	upstream2 "ystyle.top/go/cjrepo/internal/upstream"
+	"ystyle.top/go/cjrepo/internal/version"
 )
+
+func init() {
+	version.BuildDate = buildDate
+	version.GitCommit = gitCommit
+	version.GitVersion = gitVersion
+}
 
 var (
 	buildDate   string = "unknown"
 	gitCommit   string = "unknown"
 	gitVersion  string = "dev"
 )
-
-func GetBuildInfo() (buildDate, gitCommit, gitVersion string) {
-	return buildDate, gitCommit, gitVersion
-}
 
 const (
 	dbPath      = "./data/cjrepo.db"

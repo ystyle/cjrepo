@@ -7,6 +7,9 @@ export interface Stats {
   versions: number
   downloads: number
   siteName: string
+  buildDate: string
+  gitCommit: string
+  gitVersion: string
 }
 
 // 依赖项

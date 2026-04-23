@@ -46,8 +46,13 @@ RUN go mod download || true
 COPY . .
 COPY --from=frontend-builder /frontend/dist ./frontend/dist
 
-# 构建应用（包含嵌入的前端文件）
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -ldflags="-w -s" -o cjrepo .
+# 构建应用（包含嵌入的前端文件和构建信息）
+RUN BUILD_DATE=$(date -u '+%Y-%m-%d %H:%M:%S') && \
+    GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown") && \
+    GIT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || echo "dev") && \
+    CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
+    -ldflags="-w -s -X ystyle.top/go/cjrepo/internal/version.buildDate=$BUILD_DATE -X ystyle.top/go/cjrepo/internal/version.gitCommit=$GIT_COMMIT -X ystyle.top/go/cjrepo/internal/version.gitVersion=$GIT_VERSION" \
+    -o cjrepo .
 
 # 第三阶段：运行阶段
 FROM alpine:latest

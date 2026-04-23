@@ -38,10 +38,10 @@ type StatsResponse struct {
 
 // GetStats 获取公开统计信息
 func (h *PublicHandler) GetStats(c *fiber.Ctx) error {
-	// 从环境变量获取站点名称，默认为"仓颉包仓库"
+	// 从环境变量获取站点名称，默认为"仓颉私有仓"
 	siteName := os.Getenv("CJREPO_SITE_NAME")
 	if siteName == "" {
-		siteName = "仓颉包仓库"
+		siteName = "仓颉私有仓"
 	}
 
 	// 统计未删除的包数量

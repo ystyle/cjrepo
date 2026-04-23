@@ -33,7 +33,7 @@ defineExpose({ open })
     :close-on-click-modal="true"
   >
     <div class="about-content">
-      <h2 class="site-name">{{ stats?.siteName || '仓颉包仓库' }}</h2>
+      <h2 class="site-name">{{ stats?.siteName || '仓颉私有仓' }}</h2>
       
       <div class="version-info">
         <span class="version">{{ stats?.gitVersion || 'dev' }}</span>

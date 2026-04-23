@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { getStats } from '../api/public'
 
-export const siteName = ref('仓颉包仓库')
+export const siteName = ref('仓颉私有仓')
 
 export async function initSiteConfig() {
   try {

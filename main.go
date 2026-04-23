@@ -22,6 +22,16 @@ import (
 	upstream2 "ystyle.top/go/cjrepo/internal/upstream"
 )
 
+var (
+	buildDate   string = "unknown"
+	gitCommit   string = "unknown"
+	gitVersion  string = "dev"
+)
+
+func GetBuildInfo() (buildDate, gitCommit, gitVersion string) {
+	return buildDate, gitCommit, gitVersion
+}
+
 const (
 	dbPath      = "./data/cjrepo.db"
 	storagePath = "./storage"

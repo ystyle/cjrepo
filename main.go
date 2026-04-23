@@ -16,6 +16,7 @@ import (
 
 	"ystyle.top/go/cjrepo/internal/auth"
 	handlers "ystyle.top/go/cjrepo/internal/handlers"
+	"ystyle.top/go/cjrepo/internal/migrations"
 	"ystyle.top/go/cjrepo/internal/middleware"
 	"ystyle.top/go/cjrepo/internal/models"
 	"ystyle.top/go/cjrepo/internal/storage"
@@ -168,6 +169,7 @@ func initDatabase(path string, defaultOrg string) (*xorm.Engine, error) {
 		new(models.TeamOrganization),
 		new(models.TeamPackage),
 		new(models.TeamMember),
+		new(models.Migration),
 	); err != nil {
 		return nil, fmt.Errorf("failed to sync database: %w", err)
 	}
@@ -202,6 +204,12 @@ func initDatabase(path string, defaultOrg string) (*xorm.Engine, error) {
 	}
 
 	log.Println("Database initialized successfully")
+
+	// Run migrations
+	if err := migrations.Run(engine); err != nil {
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
+	}
+
 	return engine, nil
 }
 

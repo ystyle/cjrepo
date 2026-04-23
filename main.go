@@ -288,6 +288,19 @@ func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manage
 	admin.Post("/organizations/:id/members", organizationHandler.AddMember)
 	admin.Delete("/organizations/:id/members/:user_id", organizationHandler.RemoveMember)
 
+	// Team management
+	teamHandler := handlers.NewTeamHandler(engine)
+	admin.Get("/teams", teamHandler.ListTeams)
+	admin.Post("/teams", teamHandler.CreateTeam)
+	admin.Put("/teams/:id", teamHandler.UpdateTeam)
+	admin.Delete("/teams/:id", teamHandler.DeleteTeam)
+	admin.Get("/teams/:id/organizations", teamHandler.ListTeamOrganizations)
+	admin.Put("/teams/:id/organizations", teamHandler.UpdateTeamOrganizations)
+	admin.Get("/teams/:id/packages", teamHandler.ListTeamPackages)
+	admin.Put("/teams/:id/packages", teamHandler.UpdateTeamPackages)
+	admin.Get("/teams/:id/members", teamHandler.ListTeamMembers)
+	admin.Put("/teams/:id/members", teamHandler.UpdateTeamMembers)
+
 	// SPA fallback - handle all non-API routes
 	app.All("/*", func(c *fiber.Ctx) error {
 		// Skip API routes

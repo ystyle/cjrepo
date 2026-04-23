@@ -5,6 +5,7 @@
 !.git/HEAD
 !.git/refs/
 !.git/objects/
+!.git/packed-refs
 
 # 数据和存储目录（会被 volume 挂载）
 data/

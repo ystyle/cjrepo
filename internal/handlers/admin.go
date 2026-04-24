@@ -412,18 +412,34 @@ func (h *AdminHandler) HardDeletePackage(c *fiber.Ctx) error {
 	})
 }
 
+// ListUsersResponse 用户列表响应
+type ListUsersResponse struct {
+	Data     []models.User `json:"data"`
+	Total    int64         `json:"total"`
+	Page     int           `json:"page"`
+	PageSize int           `json:"pageSize"`
+}
+
 // ListUsers 获取用户列表
 func (h *AdminHandler) ListUsers(c *fiber.Ctx) error {
-	var users []models.User
-	err := h.engine.OrderBy("created_at DESC").Find(&users)
+	page := c.QueryInt("page", 1)
+	pageSize := c.QueryInt("pageSize", 20)
 
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Failed to fetch users",
-		})
+	total, _ := h.engine.Count(&models.User{})
+
+	var users []models.User
+	h.engine.OrderBy("created_at DESC").Limit(pageSize, (page-1)*pageSize).Find(&users)
+
+	if users == nil {
+		users = []models.User{}
 	}
 
-	return c.JSON(users)
+	return c.JSON(ListUsersResponse{
+		Data:     users,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	})
 }
 
 // CreateUserRequest 创建用户请求

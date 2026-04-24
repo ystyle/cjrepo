@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import {
   ElCard,
   ElTable,
@@ -46,9 +46,9 @@ const newToken = ref('')
 const loadUsers = async () => {
   loading.value = true
   try {
-    const data = await getUsers()
-    users.value = data
-    total.value = data.length
+    const res = await getUsers({ page: currentPage.value, pageSize: pageSize.value })
+    users.value = res.data
+    total.value = res.total
   } catch (error: any) {
     ElMessage.error(error.message || '加载用户列表失败')
   } finally {
@@ -56,25 +56,7 @@ const loadUsers = async () => {
   }
 }
 
-const paginatedUsers = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  return users.value.slice(start, start + pageSize.value)
-})
-
-const loadOrganizations = async () => {
-  organizationsLoading.value = true
-  try {
-    const data = await getOrganizations()
-    organizations.value = data
-  } catch (error: any) {
-    ElMessage.error(error.message || '加载组织列表失败')
-  } finally {
-    organizationsLoading.value = false
-  }
-}
-
 const openCreateDialog = async () => {
-  await loadOrganizations()
   createDialog.value = true
 }
 
@@ -189,7 +171,7 @@ onMounted(() => {
     <el-card shadow="hover">
       <el-empty v-if="!loading && users.length === 0" description="暂无数据" />
 
-      <el-table v-else :data="paginatedUsers" v-loading="loading" stripe>
+      <el-table v-else :data="users" v-loading="loading" stripe>
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column prop="username" label="用户名" width="150" />
         <el-table-column prop="email" label="邮箱" show-overflow-tooltip />
@@ -256,6 +238,8 @@ onMounted(() => {
           :page-sizes="[10, 20, 50]"
           layout="total, sizes, prev, pager, next, jumper"
           background
+          @current-change="loadUsers"
+          @size-change="loadUsers"
         />
       </div>
     </el-card>

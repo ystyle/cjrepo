@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import {
   ElCard,
   ElTable,
@@ -28,13 +28,9 @@ import {
   createOrganization,
   updateOrganization,
   deleteOrganization,
-  getOrganizationMembers,
-  addOrganizationMember,
-  removeOrganizationMember,
   type Organization,
   type CreateOrganizationRequest,
   type UpdateOrganizationRequest,
-  type OrganizationMember,
 } from '../../api/admin'
 
 const organizations = ref<Organization[]>([])
@@ -45,48 +41,26 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
 const editingId = ref<number | null>(null)
-const membersDialogVisible = ref(false)
-const currentOrganization = ref<Organization | null>(null)
-const members = ref<OrganizationMember[]>([])
-const membersLoading = ref(false)
 
-// 表单数据
 const formData = ref<CreateOrganizationRequest & { id?: number }>({
   name: '',
   display_name: '',
   description: '',
 })
 
-// 成员表单
-const memberFormData = ref({
-  username: '',
-})
-
-// 表单验证规则
 const formRules = {
   name: [{ required: true, message: '请输入组织标识', trigger: 'blur' }],
   display_name: [{ required: true, message: '请输入组织名称', trigger: 'blur' }],
 }
 
-const memberFormRules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-}
-
 const formRef = ref()
 
-const paginatedOrganizations = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  return organizations.value.slice(start, start + pageSize.value)
-})
-const memberFormRef = ref()
-
-// 加载组织列表
 const loadOrganizations = async () => {
   loading.value = true
   try {
-    const data = await getOrganizations()
-    organizations.value = data || []
-    total.value = data.length
+    const res = await getOrganizations({ page: currentPage.value, pageSize: pageSize.value })
+    organizations.value = res.data || []
+    total.value = res.total
   } catch (error: any) {
     console.error('加载组织列表失败:', error)
     organizations.value = []
@@ -180,72 +154,6 @@ const handleToggleDefault = async (org: Organization) => {
   }
 }
 
-// 打开成员管理对话框
-const openMembersDialog = async (org: Organization) => {
-  currentOrganization.value = org
-  membersDialogVisible.value = true
-  await loadMembers(org.id)
-}
-
-// 加载成员列表
-const loadMembers = async (orgId: number) => {
-  membersLoading.value = true
-  try {
-    const data = await getOrganizationMembers(orgId)
-    members.value = data || []
-  } catch (error: any) {
-    console.error('加载成员列表失败:', error)
-    ElMessage.error(error.response?.data?.error || '加载成员列表失败')
-  } finally {
-    membersLoading.value = false
-  }
-}
-
-// 添加成员
-const addMember = async () => {
-  try {
-    await memberFormRef.value.validate()
-    if (!currentOrganization.value) return
-
-    await addOrganizationMember(currentOrganization.value.id, {
-      username: memberFormData.value.username,
-    })
-
-    ElMessage.success('成员添加成功')
-    memberFormData.value.username = ''
-    await loadMembers(currentOrganization.value.id)
-  } catch (error: any) {
-    if (error.errors) return
-    ElMessage.error(error.response?.data?.error || '添加成员失败')
-  }
-}
-
-// 移除成员
-const removeMember = async (member: OrganizationMember) => {
-  if (!currentOrganization.value) return
-
-  try {
-    await ElMessageBox.confirm(
-      `确定要将 "${member.username}" 移出组织吗？`,
-      '移除确认',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }
-    )
-
-    await removeOrganizationMember(currentOrganization.value.id, member.user_id)
-    ElMessage.success('成员移除成功')
-    await loadMembers(currentOrganization.value.id)
-    await loadOrganizations()
-  } catch (error: any) {
-    if (error !== 'cancel') {
-      ElMessage.error(error.response?.data?.error || '移除成员失败')
-    }
-  }
-}
-
 onMounted(() => {
   loadOrganizations()
 })
@@ -270,7 +178,7 @@ onMounted(() => {
 
     <!-- 组织列表 -->
     <el-card v-loading="loading" class="organizations-card">
-      <el-table :data="paginatedOrganizations" stripe>
+      <el-table :data="organizations" stripe>
         <el-table-column prop="name" label="标识" width="150">
           <template #default="{ row }">
             <div class="org-name">
@@ -346,6 +254,8 @@ onMounted(() => {
           :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next, jumper"
           background
+          @current-change="loadOrganizations"
+          @size-change="loadOrganizations"
         />
       </div>
 

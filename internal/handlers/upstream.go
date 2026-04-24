@@ -25,16 +25,24 @@ func NewUpstreamHandler(engine *xorm.Engine) *UpstreamHandler {
 
 // ListUpstreams 获取上游列表
 func (h *UpstreamHandler) ListUpstreams(c *fiber.Ctx) error {
+	page := c.QueryInt("page", 1)
+	pageSize := c.QueryInt("pageSize", 20)
+
+	total, _ := h.engine.Count(&models.Upstream{})
+
 	var upstreams []models.Upstream
-	err := h.engine.Find(&upstreams)
-	if err != nil {
-		log.Printf("[ERROR] Failed to list upstreams: %v", err)
-		return c.Status(500).JSON(fiber.Map{
-			"error": "failed to list upstreams",
-		})
+	h.engine.Limit(pageSize, (page-1)*pageSize).Find(&upstreams)
+
+	if upstreams == nil {
+		upstreams = []models.Upstream{}
 	}
 
-	return c.JSON(upstreams)
+	return c.JSON(fiber.Map{
+		"data":     upstreams,
+		"total":    total,
+		"page":     page,
+		"pageSize": pageSize,
+	})
 }
 
 // CreateUpstreamRequest 创建上游请求

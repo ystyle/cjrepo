@@ -17,6 +17,7 @@ import {
   ElIcon,
   ElTooltip,
   ElPopover,
+  ElPagination,
 } from 'element-plus'
 import {
   Plus,
@@ -42,6 +43,9 @@ import {
 
 const upstreams = ref<Upstream[]>([])
 const loading = ref(false)
+const currentPage = ref(1)
+const pageSize = ref(20)
+const total = ref(0)
 const dialogVisible = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
 const editingId = ref<number | null>(null)
@@ -68,8 +72,9 @@ const formRef = ref()
 const loadUpstreams = async () => {
   loading.value = true
   try {
-    const data = await getUpstreams()
-    upstreams.value = data || []
+    const res = await getUpstreams({ page: currentPage.value, pageSize: pageSize.value })
+    upstreams.value = res.data || []
+    total.value = res.total
   } catch (error: any) {
     console.error('加载上游列表失败:', error)
     upstreams.value = []
@@ -368,6 +373,19 @@ onMounted(() => {
         </el-table-column>
       </el-table>
 
+      <div v-if="total > pageSize" class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :total="total"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next, jumper"
+          background
+          @current-change="loadUpstreams"
+          @size-change="loadUpstreams"
+        />
+      </div>
+
       <el-empty v-if="!loading && upstreams.length === 0" description="暂无上游配置">
         <el-button type="primary" :icon="Plus" @click="openCreateDialog">
           添加第一个上游
@@ -520,6 +538,12 @@ onMounted(() => {
   margin-left: 8px;
   color: #909399;
   font-size: 14px;
+}
+
+.pagination-wrapper {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
 }
 
 /* 响应式 */

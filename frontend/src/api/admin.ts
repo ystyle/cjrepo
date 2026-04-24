@@ -5,7 +5,13 @@ export interface LoginRequest {
   adminKey: string
 }
 
-// 登录响应
+// 分页响应
+export interface PaginatedResponse<T> {
+  data: T[]
+  total: number
+  page: number
+  pageSize: number
+}
 export interface LoginResponse {
   token: string
   expiresAt: number
@@ -147,10 +153,11 @@ export const hardDeletePackage = (id: number) => {
 }
 
 // 获取所有用户
-export const getUsers = () => {
-  return request<User[]>({
+export const getUsers = (params?: { page?: number; pageSize?: number }) => {
+  return request<PaginatedResponse<User>>({
     url: '/admin/users',
     method: 'get',
+    params,
   })
 }
 
@@ -305,10 +312,11 @@ export interface UpdateUpstreamRequest {
 }
 
 // 获取上游列表
-export const getUpstreams = () => {
-  return request<Upstream[]>({
+export const getUpstreams = (params?: { page?: number; pageSize?: number }) => {
+  return request<PaginatedResponse<Upstream>>({
     url: '/admin/upstreams',
     method: 'get',
+    params,
   })
 }
 
@@ -418,10 +426,11 @@ export interface AddMemberRequest {
 }
 
 // 获取组织列表
-export const getOrganizations = () => {
-  return request<Organization[]>({
+export const getOrganizations = (params?: { page?: number; pageSize?: number }) => {
+  return request<PaginatedResponse<Organization>>({
     url: '/admin/organizations',
     method: 'get',
+    params,
   })
 }
 

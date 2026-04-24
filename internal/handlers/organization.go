@@ -24,44 +24,45 @@ func NewOrganizationHandler(engine *xorm.Engine) *OrganizationHandler {
 
 // ListOrganizations 获取组织列表
 func (h *OrganizationHandler) ListOrganizations(c *fiber.Ctx) error {
-	var organizations []models.Organization
-	err := h.engine.Where("deleted_at IS NULL").OrderBy("is_default DESC, created_at DESC").Find(&organizations)
-	if err != nil {
-		log.Printf("[ERROR] Failed to list organizations: %v", err)
-		return c.Status(500).JSON(fiber.Map{
-			"error": "failed to list organizations",
-		})
-	}
+	page := c.QueryInt("page", 1)
+	pageSize := c.QueryInt("pageSize", 20)
 
-	// 为每个组织添加成员数量和包数量
+	total, _ := h.engine.Where("deleted_at IS NULL").Count(&models.Organization{})
+
+	var organizations []models.Organization
+	h.engine.Where("deleted_at IS NULL").OrderBy("is_default DESC, created_at DESC").Limit(pageSize, (page-1)*pageSize).Find(&organizations)
+
 	result := make([]fiber.Map, 0, len(organizations))
 	for _, org := range organizations {
-		// 统计成员数量
 		memberCount, err := h.engine.Where("organization_i_d = ?", org.ID).Count(&models.OrganizationMember{})
 		if err != nil {
 			memberCount = 0
 		}
 
-		// 统计包数量
 		packageCount, err := h.engine.Where("organization = ?", org.Name).Count(&models.Package{})
 		if err != nil {
 			packageCount = 0
 		}
 
 		result = append(result, fiber.Map{
-			"id":           org.ID,
-			"name":         org.Name,
-			"display_name": org.DisplayName,
-			"description":  org.Description,
-			"is_default":   org.IsDefault,
-			"member_count": memberCount,
+			"id":            org.ID,
+			"name":          org.Name,
+			"display_name":  org.DisplayName,
+			"description":   org.Description,
+			"is_default":    org.IsDefault,
+			"member_count":  memberCount,
 			"package_count": packageCount,
-			"created_at":   org.CreatedAt,
-			"updated_at":   org.UpdatedAt,
+			"created_at":    org.CreatedAt,
+			"updated_at":    org.UpdatedAt,
 		})
 	}
 
-	return c.JSON(result)
+	return c.JSON(fiber.Map{
+		"data":     result,
+		"total":    total,
+		"page":     page,
+		"pageSize": pageSize,
+	})
 }
 
 // CreateOrganizationRequest 创建组织请求

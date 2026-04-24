@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import {
   ElCard,
   ElTable,
@@ -14,18 +14,14 @@ import {
   ElFormItem,
   ElInput,
   ElIcon,
-  ElTooltip,
-  ElPopconfirm,
+  ElPagination,
 } from 'element-plus'
 import {
   Plus,
   Edit,
   Delete,
-  User,
   Setting,
   InfoFilled,
-  UserFilled,
-  DeleteFilled,
 } from '@element-plus/icons-vue'
 import {
   getOrganizations,
@@ -43,6 +39,9 @@ import {
 
 const organizations = ref<Organization[]>([])
 const loading = ref(false)
+const currentPage = ref(1)
+const pageSize = ref(20)
+const total = ref(0)
 const dialogVisible = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
 const editingId = ref<number | null>(null)
@@ -74,6 +73,11 @@ const memberFormRules = {
 }
 
 const formRef = ref()
+
+const paginatedOrganizations = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return organizations.value.slice(start, start + pageSize.value)
+})
 const memberFormRef = ref()
 
 // 加载组织列表
@@ -82,6 +86,7 @@ const loadOrganizations = async () => {
   try {
     const data = await getOrganizations()
     organizations.value = data || []
+    total.value = data.length
   } catch (error: any) {
     console.error('加载组织列表失败:', error)
     organizations.value = []
@@ -265,7 +270,7 @@ onMounted(() => {
 
     <!-- 组织列表 -->
     <el-card v-loading="loading" class="organizations-card">
-      <el-table :data="organizations" stripe>
+      <el-table :data="paginatedOrganizations" stripe>
         <el-table-column prop="name" label="标识" width="150">
           <template #default="{ row }">
             <div class="org-name">
@@ -332,6 +337,17 @@ onMounted(() => {
           </template>
         </el-table-column>
       </el-table>
+
+      <div v-if="total > pageSize" class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :total="total"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          background
+        />
+      </div>
 
       <el-empty v-if="!loading && organizations.length === 0" description="暂无组织">
         <el-button type="primary" :icon="Plus" @click="openCreateDialog">
@@ -577,5 +593,11 @@ onMounted(() => {
   .header-right .el-button {
     width: 100%;
   }
+}
+
+.pagination-wrapper {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

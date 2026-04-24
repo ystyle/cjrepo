@@ -20,6 +20,7 @@ import {
   ElOption,
   ElRow,
   ElCol,
+  ElPagination,
 } from 'element-plus'
 import { Delete, Refresh, Document, Download, View, Search } from '@element-plus/icons-vue'
 import { getAdminPackages, deletePackage, getPackageVersions, type Package } from '../../api/admin'
@@ -250,6 +251,19 @@ onMounted(() => {
           </template>
         </el-table-column>
       </el-table>
+
+      <div v-if="total > 0" class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :total="total"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          background
+          @current-change="loadPackages"
+          @size-change="loadPackages"
+        />
+      </div>
     </el-card>
 
     <!-- 版本列表对话框 -->
@@ -396,5 +410,11 @@ code {
   .page-header h1 {
     font-size: 22px;
   }
+}
+
+.pagination-wrapper {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import {
   ElCard,
   ElTable,
@@ -9,14 +9,13 @@ import {
   ElForm,
   ElFormItem,
   ElInput,
-  ElSelect,
-  ElOption,
   ElMessage,
   ElIcon,
   ElTag,
   ElSwitch,
   ElEmpty,
   ElPopconfirm,
+  ElPagination,
 } from 'element-plus'
 import { User, Refresh, Plus, Key, CopyDocument, Delete } from '@element-plus/icons-vue'
 import {
@@ -25,22 +24,19 @@ import {
   resetUserToken,
   toggleUser,
   deleteUser,
-  getOrganizations,
   type User as UserType,
-  type Organization,
 } from '../../api/admin'
 
 const users = ref<UserType[]>([])
 const loading = ref(false)
-
-const organizations = ref<Organization[]>([])
-const organizationsLoading = ref(false)
+const currentPage = ref(1)
+const pageSize = ref(20)
+const total = ref(0)
 
 const createDialog = ref(false)
 const createForm = ref({
   username: '',
   email: '',
-  organization_id: undefined as number | undefined,
 })
 
 const tokenDialog = ref(false)
@@ -52,12 +48,18 @@ const loadUsers = async () => {
   try {
     const data = await getUsers()
     users.value = data
+    total.value = data.length
   } catch (error: any) {
     ElMessage.error(error.message || '加载用户列表失败')
   } finally {
     loading.value = false
   }
 }
+
+const paginatedUsers = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return users.value.slice(start, start + pageSize.value)
+})
 
 const loadOrganizations = async () => {
   organizationsLoading.value = true
@@ -92,7 +94,7 @@ const handleCreate = async () => {
     tokenUser.value = data
     tokenDialog.value = true
 
-    createForm.value = { username: '', email: '', organization_id: undefined }
+    createForm.value = { username: '', email: '' }
     loadUsers()
   } catch (error: any) {
     ElMessage.error(error.message || '创建用户失败')
@@ -187,7 +189,7 @@ onMounted(() => {
     <el-card shadow="hover">
       <el-empty v-if="!loading && users.length === 0" description="暂无数据" />
 
-      <el-table v-else :data="users" v-loading="loading" stripe>
+      <el-table v-else :data="paginatedUsers" v-loading="loading" stripe>
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column prop="username" label="用户名" width="150" />
         <el-table-column prop="email" label="邮箱" show-overflow-tooltip />
@@ -246,6 +248,16 @@ onMounted(() => {
           </template>
         </el-table-column>
       </el-table>
+      <div v-if="total > pageSize" class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :total="total"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next, jumper"
+          background
+        />
+      </div>
     </el-card>
 
     <!-- 创建用户对话框 -->
@@ -268,27 +280,6 @@ onMounted(() => {
             type="email"
             placeholder="请输入邮箱"
           />
-        </el-form-item>
-        <el-form-item label="所属组织">
-          <el-select
-            v-model="createForm.organization_id"
-            placeholder="请选择组织（可选）"
-            clearable
-            style="width: 100%"
-            :loading="organizationsLoading"
-          >
-            <el-option
-              v-for="org in organizations"
-              :key="org.id"
-              :label="org.display_name || org.name"
-              :value="org.id"
-            >
-              <span>{{ org.display_name || org.name }}</span>
-              <span v-if="org.is_default" style="color: #8492a6; font-size: 12px; margin-left: 8px">
-                (默认)
-              </span>
-            </el-option>
-          </el-select>
         </el-form-item>
       </el-form>
 

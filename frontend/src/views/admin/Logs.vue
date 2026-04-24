@@ -18,6 +18,7 @@ import {
   ElFormItem,
   ElMessage,
   ElPopconfirm,
+  ElPagination,
 } from 'element-plus'
 import { Refresh, Document, Delete, Brush } from '@element-plus/icons-vue'
 import {
@@ -35,12 +36,14 @@ const publishLogs = ref<PublishLog[]>([])
 const publishLoading = ref(false)
 const publishTotal = ref(0)
 const publishPage = ref(1)
+const publishPageSize = ref(20)
 
 // 管理员操作日志
 const adminLogs = ref<AdminLog[]>([])
 const adminLoading = ref(false)
 const adminTotal = ref(0)
 const adminPage = ref(1)
+const adminPageSize = ref(20)
 
 // 搜索筛选
 const selectedStatus = ref('')
@@ -84,7 +87,7 @@ const loadPublishLogs = async () => {
   try {
     const data = await getPublishLogs({
       page: publishPage.value,
-      pageSize: 20,
+      pageSize: publishPageSize.value,
       status: selectedStatus.value,
     })
     publishLogs.value = data.data || []
@@ -101,7 +104,7 @@ const loadAdminLogs = async () => {
   try {
     const data = await getAdminLogs({
       page: adminPage.value,
-      pageSize: 20,
+      pageSize: adminPageSize.value,
       action: selectedAction.value,
     })
     adminLogs.value = data.data || []
@@ -259,6 +262,44 @@ onMounted(() => {
                 <span v-else style="color: #909399">-</span>
               </template>
             </el-table-column>
+            <el-table-column prop="created_at" label="时间" width="180">
+              <template #default="{ row }">
+                {{ formatDate(row.created_at) }}
+              </template>
+            </el-table-column>
+          </el-table>
+          <div v-if="publishTotal > publishPageSize" class="pagination-wrapper">
+            <el-pagination
+              v-model:current-page="publishPage"
+              v-model:page-size="publishPageSize"
+              :total="publishTotal"
+              :page-sizes="[10, 20, 50, 100]"
+              layout="total, sizes, prev, pager, next, jumper"
+              background
+              @current-change="loadPublishLogs"
+              @size-change="loadPublishLogs"
+            />
+          </div>
+        </el-tab-pane>
+
+        <!-- 管理员操作日志 -->
+        <el-tab-pane label="操作日志" name="admin">
+          <el-table
+            :data="adminLogs"
+            v-loading="adminLoading"
+            stripe
+            style="width: 100%"
+          >
+            <el-table-column prop="id" label="ID" width="80" />
+            <el-table-column prop="action" label="操作" width="150">
+              <template #default="{ row }">
+                <el-tag v-if="getActionType(row.action)" :type="getActionType(row.action)" size="small">
+                  {{ formatAction(row.action) }}
+                </el-tag>
+                <span v-else>{{ row.action }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="target" label="目标对象" min-width="150" show-overflow-tooltip />
             <el-table-column prop="ip_addr" label="IP地址" width="140" />
             <el-table-column prop="created_at" label="时间" width="180">
               <template #default="{ row }">
@@ -266,6 +307,18 @@ onMounted(() => {
               </template>
             </el-table-column>
           </el-table>
+          <div v-if="adminTotal > adminPageSize" class="pagination-wrapper">
+            <el-pagination
+              v-model:current-page="adminPage"
+              v-model:page-size="adminPageSize"
+              :total="adminTotal"
+              :page-sizes="[10, 20, 50, 100]"
+              layout="total, sizes, prev, pager, next, jumper"
+              background
+              @current-change="loadAdminLogs"
+              @size-change="loadAdminLogs"
+            />
+          </div>
         </el-tab-pane>
 
         <!-- 管理员操作日志 -->
@@ -401,5 +454,11 @@ onMounted(() => {
   .header-actions button {
     width: 100%;
   }
+}
+
+.pagination-wrapper {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

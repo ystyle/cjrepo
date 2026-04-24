@@ -246,7 +246,7 @@ onMounted(() => {
         </el-table-column>
       </el-table>
 
-      <div v-if="total > pageSize" class="pagination-wrapper">
+      <div v-if="total > 0" class="pagination-wrapper">
         <el-pagination
           v-model:current-page="currentPage"
           v-model:page-size="pageSize"

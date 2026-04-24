@@ -218,7 +218,7 @@ onMounted(() => {
               </el-select>
             </el-col>
           </el-row>
-          <div v-if="publishTotal > publishPageSize" class="pagination-wrapper">
+          <div v-if="publishTotal > 0" class="pagination-wrapper">
             <el-pagination
               v-model:current-page="publishPage"
               v-model:page-size="publishPageSize"
@@ -280,7 +280,7 @@ onMounted(() => {
                 </el-select>
               </el-col>
             </el-row>
-            <div v-if="adminTotal > adminPageSize" class="pagination-wrapper">
+            <div v-if="adminTotal > 0" class="pagination-wrapper">
               <el-pagination
                 v-model:current-page="adminPage"
                 v-model:page-size="adminPageSize"

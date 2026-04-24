@@ -1,0 +1,58 @@
+{
+  "session_id": "session_ecd6801e",
+  "session_start_time": 1777056394.8566654,
+  "events": [
+    {
+      "event_type": "session_start",
+      "timestamp": 1777056394.8566692,
+      "relative_time": 0.0,
+      "data": {
+        "session_id": "session_ecd6801e"
+      }
+    },
+    {
+      "event_type": "command_execution",
+      "timestamp": 1777056394.8568134,
+      "relative_time": 0.0,
+      "data": {
+        "command": "bash",
+        "working_directory": "/home/ystyle/Projects/cjrepo"
+      }
+    },
+    {
+      "event_type": "session_state",
+      "timestamp": 1777056395.090955,
+      "relative_time": 0.234,
+      "data": {
+        "state": "initialized",
+        "details": {
+          "command": "bash",
+          "tmux_session": "mcp_session_ecd6801e",
+          "working_directory": "/home/ystyle/Projects/cjrepo"
+        }
+      }
+    },
+    {
+      "event_type": "input_sent",
+      "timestamp": 1777056399.3578625,
+      "relative_time": 4.501,
+      "data": {
+        "input_text": "export CJREPO_ADMIN_KEY=test-admin-key-2024 CJREPO_PORT=18062 && ./cjrepo &\n",
+        "input_type": "tmux_input",
+        "input_length": 76,
+        "input_repr": "'export CJREPO_ADMIN_KEY=test-admin-key-2024 CJREPO_PORT=18062 && ./cjrepo &\\n'"
+      }
+    },
+    {
+      "event_type": "input_sent",
+      "timestamp": 1777056488.074758,
+      "relative_time": 93.218,
+      "data": {
+        "input_text": "lsof -ti:8060 | xargs kill -9 2>/dev/null\n",
+        "input_type": "tmux_input",
+        "input_length": 42,
+        "input_repr": "'lsof -ti:8060 | xargs kill -9 2>/dev/null\\n'"
+      }
+    }
+  ]
+}

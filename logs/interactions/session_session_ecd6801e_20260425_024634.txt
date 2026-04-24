@@ -1,0 +1,33 @@
+
+[2026-04-25T02:46:34.856669] (+0.0s) SESSION_START
+------------------------------------------------------------
+session_id: session_ecd6801e
+
+
+[2026-04-25T02:46:34.856813] (+0.0s) COMMAND_EXECUTION
+------------------------------------------------------------
+command: bash
+working_directory: /home/ystyle/Projects/cjrepo
+
+
+[2026-04-25T02:46:35.090955] (+0.234s) SESSION_STATE
+------------------------------------------------------------
+state: initialized
+details: {'command': 'bash', 'tmux_session': 'mcp_session_ecd6801e', 'working_directory': '/home/ystyle/Projects/cjrepo'}
+
+
+[2026-04-25T02:46:39.357862] (+4.501s) INPUT_SENT
+------------------------------------------------------------
+Input Type: tmux_input
+Input Text: export CJREPO_ADMIN_KEY=test-admin-key-2024 CJREPO_PORT=18062 && ./cjrepo &
+
+Input Repr: 'export CJREPO_ADMIN_KEY=test-admin-key-2024 CJREPO_PORT=18062 && ./cjrepo &\n'
+
+
+[2026-04-25T02:48:08.074758] (+93.218s) INPUT_SENT
+------------------------------------------------------------
+Input Type: tmux_input
+Input Text: lsof -ti:8060 | xargs kill -9 2>/dev/null
+
+Input Repr: 'lsof -ti:8060 | xargs kill -9 2>/dev/null\n'
+

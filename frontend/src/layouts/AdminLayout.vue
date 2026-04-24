@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ElContainer,
   ElAside,
@@ -14,7 +14,12 @@ import CjBox from '../components/CjBox.vue'
 import AboutDialog from '../components/AboutDialog.vue'
 
 const route = useRoute()
+const router = useRouter()
 const aboutDialogRef = ref<InstanceType<typeof AboutDialog>>()
+
+const goHome = () => {
+  router.push('/')
+}
 
 const openAbout = () => {
   aboutDialogRef.value?.open()
@@ -61,7 +66,7 @@ const openAbout = () => {
         </el-menu-item>
       </el-menu>
       <el-menu class="bottom-menu">
-        <el-menu-item index="/">
+        <el-menu-item @click="goHome">
           <el-icon><House /></el-icon>
           <span>返回首页</span>
         </el-menu-item>

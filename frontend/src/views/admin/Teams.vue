@@ -63,8 +63,26 @@ const currentTeam = ref<Team | null>(null)
 
 const selectedOrgIds = ref<(number | null)[]>([])
 const selectedUserIds = ref<number[]>([])
-const orgOptions = ref<Organization[]>([])
-const userOptions = ref<User[]>([])
+const teamMembers = ref<TeamMember[]>([])
+const teamPackages = ref<TeamPackage[]>([])
+const newPackages = ref<any[]>([])
+
+const selectedMembers = ref<User[]>([])
+const searchMemberKeyword = ref('')
+const searchMemberResults = ref<User[]>([])
+let searchMemberTimer: ReturnType<typeof setTimeout>
+
+const formRef = ref()
+const formData = ref({
+  name: '',
+  display_name: '',
+  description: '',
+  permission: 'read',
+})
+const formRules = {
+  name: [{ required: true, message: '请输入团队标识', trigger: 'blur' }],
+  permission: [{ required: true, message: '请选择默认权限', trigger: 'change' }],
+}
 
 const permissionOptions = [
   { value: 'read', label: '读取', desc: '可下载包和查看索引' },
@@ -121,24 +139,21 @@ const openOrgsDialog = async (team: Team) => {
   currentTeam.value = team
   orgsDialogVisible.value = true
   selectedOrgIds.value = []
-  orgOptions.value = []
+  selectedOrgs.value = []
+  searchOrgResults.value = []
   const data = await getTeamOrganizations(team.id)
   selectedOrgIds.value = data?.map((o: TeamOrganization) => o.organization_id) || []
-  orgOptions.value = data?.filter((o) => o.organization_id != null).map((o) => ({
+  selectedOrgs.value = data?.filter((o) => o.organization_id != null).map((o) => ({
     id: o.organization_id!,
     name: o.organization_name,
     display_name: o.organization_name,
+    description: '',
+    is_default: false,
+    member_count: 0,
+    package_count: 0,
+    created_at: '',
+    updated_at: '',
   })) || []
-}
-
-const searchOrgs = async (keyword: string) => {
-  if (!keyword) return
-  try {
-    const data = await getOrganizations({ search: keyword })
-    orgOptions.value = data || []
-  } catch {
-    orgOptions.value = []
-  }
 }
 
 const saveOrgs = async () => {
@@ -207,26 +222,18 @@ const openMembersDialog = async (team: Team) => {
   currentTeam.value = team
   membersDialogVisible.value = true
   selectedUserIds.value = []
-  userOptions.value = []
+  selectedMembers.value = []
+  searchMemberResults.value = []
+  searchMemberKeyword.value = ''
   const data = await getTeamMembers(team.id)
   teamMembers.value = data || []
   selectedUserIds.value = data?.map((m: TeamMember) => m.user_id) || []
-  userOptions.value = data?.map((m: TeamMember) => ({
+  selectedMembers.value = data?.map((m: TeamMember) => ({
     id: m.user_id,
     username: m.username,
     email: m.email,
     is_active: m.is_active,
   })) || []
-}
-
-const searchUsers = async (keyword: string) => {
-  if (!keyword) return
-  try {
-    const data = await getUsers({ search: keyword })
-    userOptions.value = data || []
-  } catch {
-    userOptions.value = []
-  }
 }
 
 const saveMembers = async () => {
@@ -239,6 +246,87 @@ const saveMembers = async () => {
   } catch (error: any) {
     ElMessage.error(error.response?.data?.error || '更新失败')
   }
+}
+
+const openCreateDialog = () => {
+  dialogMode.value = 'create'
+  editingId.value = null
+  formData.value = { name: '', display_name: '', description: '', permission: 'read' }
+  dialogVisible.value = true
+}
+
+const openEditDialog = (team: Team) => {
+  dialogMode.value = 'edit'
+  editingId.value = team.id
+  formData.value = {
+    name: team.name,
+    display_name: team.display_name || '',
+    description: team.description || '',
+    permission: team.permission || 'read',
+  }
+  dialogVisible.value = true
+}
+
+const submitForm = async () => {
+  if (!formRef.value) return
+  await formRef.value.validate(async (valid: boolean) => {
+    if (!valid) return
+    try {
+      if (dialogMode.value === 'create') {
+        await createTeam(formData.value)
+        ElMessage.success('团队创建成功')
+      } else {
+        await updateTeam(editingId.value!, formData.value)
+        ElMessage.success('团队更新成功')
+      }
+      dialogVisible.value = false
+      await loadTeams()
+    } catch (error: any) {
+      ElMessage.error(error.response?.data?.error || '操作失败')
+    }
+  })
+}
+
+const handleDelete = async (team: Team) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除团队 "${team.display_name || team.name}"？此操作不可恢复。`,
+      '确认删除',
+      { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' }
+    )
+    await deleteTeam(team.id)
+    ElMessage.success('团队已删除')
+    await loadTeams()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.error || '删除失败')
+    }
+  }
+}
+
+const onSearchMemberInput = () => {
+  clearTimeout(searchMemberTimer)
+  searchMemberTimer = setTimeout(async () => {
+    const kw = searchMemberKeyword.value.trim()
+    if (!kw) { searchMemberResults.value = []; return }
+    try {
+      const data = await getUsers({ search: kw })
+      searchMemberResults.value = data || []
+    } catch { searchMemberResults.value = [] }
+  }, 300)
+}
+
+const addMember = (user: User) => {
+  if (selectedUserIds.value.includes(user.id)) return
+  selectedUserIds.value.push(user.id)
+  selectedMembers.value.push(user)
+  searchMemberKeyword.value = ''
+  searchMemberResults.value = []
+}
+
+const removeMember = (idx: number) => {
+  selectedUserIds.value.splice(idx, 1)
+  selectedMembers.value.splice(idx, 1)
 }
 
 const getPermissionLabel = (perm: string) => {

@@ -20,17 +20,24 @@ import {
   Plus,
   Edit,
   Delete,
+  User,
   Setting,
   InfoFilled,
+  UserFilled,
+  DeleteFilled,
 } from '@element-plus/icons-vue'
 import {
   getOrganizations,
   createOrganization,
   updateOrganization,
   deleteOrganization,
+  getOrganizationMembers,
+  addOrganizationMember,
+  removeOrganizationMember,
   type Organization,
   type CreateOrganizationRequest,
   type UpdateOrganizationRequest,
+  type OrganizationMember,
 } from '../../api/admin'
 
 const organizations = ref<Organization[]>([])
@@ -41,6 +48,10 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
 const editingId = ref<number | null>(null)
+const membersDialogVisible = ref(false)
+const currentOrganization = ref<Organization | null>(null)
+const members = ref<OrganizationMember[]>([])
+const membersLoading = ref(false)
 
 const formData = ref<CreateOrganizationRequest & { id?: number }>({
   name: '',
@@ -54,6 +65,15 @@ const formRules = {
 }
 
 const formRef = ref()
+const memberFormRef = ref()
+
+const memberFormData = ref({
+  username: '',
+})
+
+const memberFormRules = {
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+}
 
 const loadOrganizations = async () => {
   loading.value = true
@@ -151,6 +171,72 @@ const handleToggleDefault = async (org: Organization) => {
     await loadOrganizations()
   } catch (error: any) {
     ElMessage.error(error.response?.data?.error || '操作失败')
+  }
+}
+
+// 打开成员管理对话框
+const openMembersDialog = async (org: Organization) => {
+  currentOrganization.value = org
+  membersDialogVisible.value = true
+  await loadMembers(org.id)
+}
+
+// 加载成员列表
+const loadMembers = async (orgId: number) => {
+  membersLoading.value = true
+  try {
+    const data = await getOrganizationMembers(orgId)
+    members.value = data || []
+  } catch (error: any) {
+    console.error('加载成员列表失败:', error)
+    ElMessage.error(error.response?.data?.error || '加载成员列表失败')
+  } finally {
+    membersLoading.value = false
+  }
+}
+
+// 添加成员
+const addMember = async () => {
+  try {
+    await memberFormRef.value.validate()
+    if (!currentOrganization.value) return
+
+    await addOrganizationMember(currentOrganization.value.id, {
+      username: memberFormData.value.username,
+    })
+
+    ElMessage.success('成员添加成功')
+    memberFormData.value.username = ''
+    await loadMembers(currentOrganization.value.id)
+  } catch (error: any) {
+    if (error.errors) return
+    ElMessage.error(error.response?.data?.error || '添加成员失败')
+  }
+}
+
+// 移除成员
+const removeMember = async (member: OrganizationMember) => {
+  if (!currentOrganization.value) return
+
+  try {
+    await ElMessageBox.confirm(
+      `确定要将 "${member.username}" 移出组织吗？`,
+      '移除确认',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+
+    await removeOrganizationMember(currentOrganization.value.id, member.user_id)
+    ElMessage.success('成员移除成功')
+    await loadMembers(currentOrganization.value.id)
+    await loadOrganizations()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.error || '移除成员失败')
+    }
   }
 }
 

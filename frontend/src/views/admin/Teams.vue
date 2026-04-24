@@ -66,28 +66,6 @@ const selectedUserIds = ref<number[]>([])
 const orgOptions = ref<Organization[]>([])
 const userOptions = ref<User[]>([])
 
-const formData = ref({
-  name: '',
-  display_name: '',
-  description: '',
-  permission: 'read',
-})
-
-const packageFormData = ref({
-  organization: '',
-  package_name: '',
-  permission: 'read',
-})
-
-const newPackages = ref<typeof packageFormData.value[]>([])
-
-const formRules = {
-  name: [{ required: true, message: '请输入团队标识', trigger: 'blur' }],
-  permission: [{ required: true, message: '请选择权限级别', trigger: 'change' }],
-}
-
-const formRef = ref()
-
 const permissionOptions = [
   { value: 'read', label: '读取', desc: '可下载包和查看索引' },
   { value: 'write', label: '写入', desc: '可发布新版本' },
@@ -108,70 +86,35 @@ const loadTeams = async () => {
   }
 }
 
-const openCreateDialog = () => {
-  dialogMode.value = 'create'
-  editingId.value = null
-  formData.value = {
-    name: '',
-    display_name: '',
-    description: '',
-    permission: 'read',
-  }
-  dialogVisible.value = true
+// 组织关联：搜索 → 添加 → 列表
+const selectedOrgs = ref<Organization[]>([])
+const searchOrgKeyword = ref('')
+const searchOrgResults = ref<Organization[]>([])
+let searchOrgTimer: ReturnType<typeof setTimeout>
+
+const onSearchOrgInput = () => {
+  clearTimeout(searchOrgTimer)
+  searchOrgTimer = setTimeout(async () => {
+    const kw = searchOrgKeyword.value.trim()
+    if (!kw) { searchOrgResults.value = []; return }
+    try {
+      const data = await getOrganizations({ search: kw })
+      searchOrgResults.value = data || []
+    } catch { searchOrgResults.value = [] }
+  }, 300)
 }
 
-const openEditDialog = (team: Team) => {
-  dialogMode.value = 'edit'
-  editingId.value = team.id
-  formData.value = {
-    name: team.name,
-    display_name: team.display_name,
-    description: team.description,
-    permission: team.permission,
-  }
-  dialogVisible.value = true
+const addOrg = (org: Organization) => {
+  if (selectedOrgIds.value.includes(org.id)) return
+  selectedOrgIds.value.push(org.id)
+  selectedOrgs.value.push(org)
+  searchOrgKeyword.value = ''
+  searchOrgResults.value = []
 }
 
-const submitForm = async () => {
-  try {
-    await formRef.value.validate()
-
-    if (dialogMode.value === 'create') {
-      await createTeam(formData.value)
-      ElMessage.success('团队创建成功')
-    } else {
-      await updateTeam(editingId.value!, formData.value)
-      ElMessage.success('团队更新成功')
-    }
-
-    dialogVisible.value = false
-    await loadTeams()
-  } catch (error: any) {
-    if (error.errors) return
-    ElMessage.error(error.response?.data?.error || '操作失败')
-  }
-}
-
-const handleDelete = async (team: Team) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除团队 "${team.display_name || team.name}" 吗？此操作不可恢复。`,
-      '删除确认',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }
-    )
-
-    await deleteTeam(team.id)
-    ElMessage.success('团队删除成功')
-    await loadTeams()
-  } catch (error: any) {
-    if (error !== 'cancel') {
-      ElMessage.error(error.response?.data?.error || '删除失败')
-    }
-  }
+const removeOrg = (idx: number) => {
+  selectedOrgIds.value.splice(idx, 1)
+  selectedOrgs.value.splice(idx, 1)
 }
 
 const openOrgsDialog = async (team: Team) => {
@@ -475,30 +418,42 @@ onMounted(() => {
     <el-dialog
       v-model="orgsDialogVisible"
       :title="`组织关联 - ${currentTeam?.display_name || currentTeam?.name || ''}`"
-      width="600px"
+      width="700px"
     >
       <div class="dialog-content">
-        <p class="dialog-tip">搜索并选择团队可操作的组织：</p>
-        <el-select
-          v-model="selectedOrgIds"
-          multiple
-          filterable
-          remote
-          reserve-keyword
-          placeholder="搜索组织名称"
-          :remote-method="searchOrgs"
-          style="width: 100%"
-        >
-          <el-option :value="null" label="(无组织包)" />
-          <el-option
-            v-for="org in orgOptions"
-            :key="org.id"
-            :value="org.id"
-            :label="org.display_name || org.name"
+        <p class="dialog-tip">搜索并添加组织：</p>
+        <div class="search-row">
+          <el-input
+            v-model="searchOrgKeyword"
+            placeholder="输入组织名称搜索"
+            clearable
+            @input="onSearchOrgInput"
+            @clear="searchOrgResults = []"
           />
-        </el-select>
+          <div v-if="searchOrgResults.length > 0" class="search-results">
+            <div
+              v-for="org in searchOrgResults"
+              :key="org.id"
+              class="search-result-item"
+              @click="addOrg(org)"
+            >
+              <span>{{ org.display_name || org.name }}</span>
+              <el-tag size="small" type="info">{{ org.name }}</el-tag>
+              <el-button size="small" type="primary" link>添加</el-button>
+            </div>
+          </div>
+        </div>
+        <p class="dialog-tip" style="margin-top: 16px">已关联的组织：</p>
+        <el-table :data="selectedOrgs" stripe max-height="300">
+          <el-table-column prop="display_name" label="组织名称" min-width="200" />
+          <el-table-column label="操作" width="100" align="center">
+            <template #default="{ $index }">
+              <el-button size="small" type="danger" link @click="removeOrg($index)">移除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-empty v-if="selectedOrgs.length === 0" description="暂未关联组织" :image-size="80" />
       </div>
-
       <template #footer>
         <el-button @click="orgsDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="saveOrgs">保存</el-button>
@@ -567,36 +522,53 @@ onMounted(() => {
     <el-dialog
       v-model="membersDialogVisible"
       :title="`团队成员 - ${currentTeam?.display_name || currentTeam?.name || ''}`"
-      width="600px"
+      width="700px"
     >
       <div class="dialog-content">
-        <p class="dialog-tip">搜索并选择团队成员：</p>
-        <el-select
-          v-model="selectedUserIds"
-          multiple
-          filterable
-          remote
-          reserve-keyword
-          placeholder="搜索用户名"
-          :remote-method="searchUsers"
-          style="width: 100%"
-        >
-          <el-option
-            v-for="user in userOptions"
-            :key="user.id"
-            :value="user.id"
-            :label="`${user.username} (${user.email})`"
-          >
-            <div class="user-item">
-              <span class="user-name">{{ user.username }}</span>
+        <p class="dialog-tip">搜索并添加成员：</p>
+        <div class="search-row">
+          <el-input
+            v-model="searchMemberKeyword"
+            placeholder="输入用户名搜索"
+            clearable
+            @input="onSearchMemberInput"
+            @clear="searchMemberResults = []"
+          />
+          <div v-if="searchMemberResults.length > 0" class="search-results">
+            <div
+              v-for="user in searchMemberResults"
+              :key="user.id"
+              class="search-result-item"
+              @click="addMember(user)"
+            >
+              <span>{{ user.username }}</span>
+              <span class="search-result-email">{{ user.email }}</span>
               <el-tag :type="user.is_active ? 'success' : 'danger'" size="small">
                 {{ user.is_active ? '活跃' : '禁用' }}
               </el-tag>
+              <el-button size="small" type="primary" link>添加</el-button>
             </div>
-          </el-option>
-        </el-select>
+          </div>
+        </div>
+        <p class="dialog-tip" style="margin-top: 16px">已选成员：</p>
+        <el-table :data="selectedMembers" stripe max-height="300">
+          <el-table-column prop="username" label="用户名" width="150" />
+          <el-table-column prop="email" label="邮箱" min-width="200" />
+          <el-table-column prop="is_active" label="状态" width="80" align="center">
+            <template #default="{ row }">
+              <el-tag :type="row.is_active ? 'success' : 'danger'" size="small">
+                {{ row.is_active ? '活跃' : '禁用' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="100" align="center">
+            <template #default="{ $index }">
+              <el-button size="small" type="danger" link @click="removeMember($index)">移除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-empty v-if="selectedMembers.length === 0" description="暂未选择成员" :image-size="80" />
       </div>
-
       <template #footer>
         <el-button @click="membersDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="saveMembers">保存</el-button>
@@ -682,18 +654,41 @@ onMounted(() => {
   margin-bottom: 16px;
 }
 
-.org-checkbox-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.search-row {
+  position: relative;
 }
 
-.user-checkbox-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-height: 400px;
+.search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  max-height: 240px;
   overflow-y: auto;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.search-result-item:hover {
+  background: #f5f7fa;
+}
+
+.search-result-email {
+  font-size: 12px;
+  color: #909399;
+  flex: 1;
 }
 
 .user-item {

@@ -199,75 +199,25 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 筛选栏 -->
-    <el-card class="search-card" shadow="hover">
-      <el-row :gutter="20">
-        <el-col :xs="24" :sm="12">
-          <el-select
-            v-model="selectedStatus"
-            placeholder="筛选发布状态"
-            clearable
-            style="width: 100%"
-            @change="handleSearch"
-            :disabled="activeTab !== 'publish'"
-          >
-            <el-option label="成功" value="success" />
-            <el-option label="失败" value="failed" />
-          </el-select>
-        </el-col>
-        <el-col :xs="24" :sm="12">
-          <el-select
-            v-model="selectedAction"
-            placeholder="筛选操作类型"
-            clearable
-            style="width: 100%"
-            @change="handleSearch"
-            :disabled="activeTab !== 'admin'"
-          >
-            <el-option label="删除包" value="delete_package" />
-            <el-option label="创建用户" value="create_user" />
-            <el-option label="重置Token" value="reset_token" />
-            <el-option label="恢复包" value="restore_package" />
-            <el-option label="管理员登录" value="admin_login" />
-          </el-select>
-        </el-col>
-      </el-row>
-    </el-card>
-
     <!-- 日志表格 -->
     <el-card shadow="hover">
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
         <!-- 发布日志 -->
         <el-tab-pane label="发布日志" name="publish">
-          <el-table
-            :data="publishLogs"
-            v-loading="publishLoading"
-            stripe
-            style="width: 100%"
-          >
-            <el-table-column prop="id" label="ID" width="80" />
-            <el-table-column prop="package_name" label="包名" min-width="150" />
-            <el-table-column prop="version" label="版本" width="100" />
-            <el-table-column prop="organization" label="组织" width="120" />
-            <el-table-column prop="status" label="状态" width="100">
-              <template #default="{ row }">
-                <el-tag :type="getStatusType(row.status)" size="small">
-                  {{ row.status }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="error" label="错误信息" min-width="200" show-overflow-tooltip>
-              <template #default="{ row }">
-                <span v-if="row.error" style="color: #f56c6c">{{ row.error }}</span>
-                <span v-else style="color: #909399">-</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="created_at" label="时间" width="180">
-              <template #default="{ row }">
-                {{ formatDate(row.created_at) }}
-              </template>
-            </el-table-column>
-          </el-table>
+          <el-row :gutter="20" style="margin-bottom: 16px">
+            <el-col :xs="24" :sm="12">
+              <el-select
+                v-model="selectedStatus"
+                placeholder="筛选发布状态"
+                clearable
+                style="width: 100%"
+                @change="handleSearch"
+              >
+                <el-option label="成功" value="success" />
+                <el-option label="失败" value="failed" />
+              </el-select>
+            </el-col>
+          </el-row>
           <div v-if="publishTotal > publishPageSize" class="pagination-wrapper">
             <el-pagination
               v-model:current-page="publishPage"
@@ -280,74 +230,92 @@ onMounted(() => {
               @size-change="loadPublishLogs"
             />
           </div>
-        </el-tab-pane>
+            <el-table
+              :data="publishLogs"
+              v-loading="publishLoading"
+              stripe
+              style="width: 100%"
+            >
+              <el-table-column prop="id" label="ID" width="80" />
+              <el-table-column prop="package_name" label="包名" min-width="150" />
+              <el-table-column prop="version" label="版本" width="100" />
+              <el-table-column prop="organization" label="组织" width="120" />
+              <el-table-column prop="status" label="状态" width="100">
+                <template #default="{ row }">
+                  <el-tag :type="getStatusType(row.status)" size="small">
+                    {{ row.status }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="error" label="错误信息" min-width="200" show-overflow-tooltip>
+                <template #default="{ row }">
+                  <span v-if="row.error" style="color: #f56c6c">{{ row.error }}</span>
+                  <span v-else style="color: #909399">-</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="created_at" label="时间" width="180">
+                <template #default="{ row }">
+                  {{ formatDate(row.created_at) }}
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
 
-        <!-- 管理员操作日志 -->
-        <el-tab-pane label="操作日志" name="admin">
-          <el-table
-            :data="adminLogs"
-            v-loading="adminLoading"
-            stripe
-            style="width: 100%"
-          >
-            <el-table-column prop="id" label="ID" width="80" />
-            <el-table-column prop="action" label="操作" width="150">
-              <template #default="{ row }">
-                <el-tag v-if="getActionType(row.action)" :type="getActionType(row.action)" size="small">
-                  {{ formatAction(row.action) }}
-                </el-tag>
-                <span v-else>{{ row.action }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="target" label="目标对象" min-width="150" show-overflow-tooltip />
-            <el-table-column prop="ip_addr" label="IP地址" width="140" />
-            <el-table-column prop="created_at" label="时间" width="180">
-              <template #default="{ row }">
-                {{ formatDate(row.created_at) }}
-              </template>
-            </el-table-column>
-          </el-table>
-          <div v-if="adminTotal > adminPageSize" class="pagination-wrapper">
-            <el-pagination
-              v-model:current-page="adminPage"
-              v-model:page-size="adminPageSize"
-              :total="adminTotal"
-              :page-sizes="[10, 20, 50, 100]"
-              layout="total, sizes, prev, pager, next, jumper"
-              background
-              @current-change="loadAdminLogs"
-              @size-change="loadAdminLogs"
-            />
-          </div>
-        </el-tab-pane>
-
-        <!-- 管理员操作日志 -->
-        <el-tab-pane label="操作日志" name="admin">
-          <el-table
-            :data="adminLogs"
-            v-loading="adminLoading"
-            stripe
-            style="width: 100%"
-          >
-            <el-table-column prop="id" label="ID" width="80" />
-            <el-table-column prop="action" label="操作" width="150">
-              <template #default="{ row }">
-                <el-tag v-if="getActionType(row.action)" :type="getActionType(row.action)" size="small">
-                  {{ formatAction(row.action) }}
-                </el-tag>
-                <span v-else>{{ row.action }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="target" label="目标对象" min-width="150" show-overflow-tooltip />
-            <el-table-column prop="ip_addr" label="IP地址" width="140" />
-            <el-table-column prop="created_at" label="时间" width="180">
-              <template #default="{ row }">
-                {{ formatDate(row.created_at) }}
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-tab-pane>
-      </el-tabs>
+          <!-- 管理员操作日志 -->
+          <el-tab-pane label="管理员操作日志" name="admin">
+            <el-row :gutter="20" style="margin-bottom: 16px">
+              <el-col :xs="24" :sm="12">
+                <el-select
+                  v-model="selectedAction"
+                  placeholder="筛选操作类型"
+                  clearable
+                  style="width: 100%"
+                  @change="handleSearch"
+                >
+                  <el-option label="删除包" value="delete_package" />
+                  <el-option label="创建用户" value="create_user" />
+                  <el-option label="重置Token" value="reset_token" />
+                  <el-option label="恢复包" value="restore_package" />
+                  <el-option label="管理员登录" value="admin_login" />
+                </el-select>
+              </el-col>
+            </el-row>
+            <div v-if="adminTotal > adminPageSize" class="pagination-wrapper">
+              <el-pagination
+                v-model:current-page="adminPage"
+                v-model:page-size="adminPageSize"
+                :total="adminTotal"
+                :page-sizes="[10, 20, 50, 100]"
+                layout="total, sizes, prev, pager, next, jumper"
+                background
+                @current-change="loadAdminLogs"
+                @size-change="loadAdminLogs"
+              />
+            </div>
+            <el-table
+              :data="adminLogs"
+              v-loading="adminLoading"
+              stripe
+              style="width: 100%"
+            >
+              <el-table-column prop="id" label="ID" width="80" />
+              <el-table-column prop="action" label="操作" width="150">
+                <template #default="{ row }">
+                  <el-tag v-if="getActionType(row.action)" :type="getActionType(row.action)" size="small">
+                    {{ formatAction(row.action) }}
+                  </el-tag>
+                  <span v-else>{{ row.action }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="target" label="目标对象" min-width="150" show-overflow-tooltip />
+              <el-table-column prop="created_at" label="时间" width="180">
+                <template #default="{ row }">
+                  {{ formatDate(row.created_at) }}
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
+        </el-tabs>
     </el-card>
 
     <!-- 清理日志对话框 -->
@@ -429,31 +397,6 @@ onMounted(() => {
 .header-actions {
   display: flex;
   gap: 10px;
-}
-
-.search-card {
-  margin-bottom: 20px;
-}
-
-@media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
-    gap: 15px;
-    align-items: flex-start;
-  }
-
-  .page-header h1 {
-    font-size: 22px;
-  }
-
-  .header-actions {
-    width: 100%;
-    flex-direction: column;
-  }
-
-  .header-actions button {
-    width: 100%;
-  }
 }
 
 .pagination-wrapper {

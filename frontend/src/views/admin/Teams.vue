@@ -39,6 +39,7 @@ import {
   getTeamMembers,
   updateTeamMembers,
   type Team,
+  type TeamOrganization,
   type TeamPackage,
   type TeamMember,
 } from '../../api/team'
@@ -177,15 +178,18 @@ const openOrgsDialog = async (team: Team) => {
   currentTeam.value = team
   orgsDialogVisible.value = true
   selectedOrgIds.value = []
+  orgOptions.value = []
   const data = await getTeamOrganizations(team.id)
   selectedOrgIds.value = data?.map((o: TeamOrganization) => o.organization_id) || []
+  orgOptions.value = data?.filter((o) => o.organization_id != null).map((o) => ({
+    id: o.organization_id!,
+    name: o.organization_name,
+    display_name: o.organization_name,
+  })) || []
 }
 
 const searchOrgs = async (keyword: string) => {
-  if (!keyword) {
-    orgOptions.value = []
-    return
-  }
+  if (!keyword) return
   try {
     const data = await getOrganizations({ search: keyword })
     orgOptions.value = data || []
@@ -219,10 +223,7 @@ const openPackagesDialog = async (team: Team) => {
 }
 
 const searchPkgOrgs = async (keyword: string, row: any) => {
-  if (!keyword) {
-    row._orgOptions = []
-    return
-  }
+  if (!keyword) return
   try {
     const data = await getOrganizations({ search: keyword })
     row._orgOptions = data || []
@@ -263,16 +264,20 @@ const openMembersDialog = async (team: Team) => {
   currentTeam.value = team
   membersDialogVisible.value = true
   selectedUserIds.value = []
+  userOptions.value = []
   const data = await getTeamMembers(team.id)
   teamMembers.value = data || []
   selectedUserIds.value = data?.map((m: TeamMember) => m.user_id) || []
+  userOptions.value = data?.map((m: TeamMember) => ({
+    id: m.user_id,
+    username: m.username,
+    email: m.email,
+    is_active: m.is_active,
+  })) || []
 }
 
 const searchUsers = async (keyword: string) => {
-  if (!keyword) {
-    userOptions.value = []
-    return
-  }
+  if (!keyword) return
   try {
     const data = await getUsers({ search: keyword })
     userOptions.value = data || []

@@ -74,7 +74,7 @@ docker-compose exec cjrepo ./cjrepo user add <name> <email>
 ```
 
 ## 前端开发
-
+>开发新功能后，需要使用`agent browser`实际操作测试一下，看看功能是否生效
 ```bash
 cd frontend
 pnpm dev        # 开发服务器

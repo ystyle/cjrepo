@@ -690,7 +690,7 @@ func (h *AdminHandler) GetAdminLogs(c *fiber.Ctx) error {
 	action := c.Query("action", "")
 
 	// 构建查询
-	query := h.engine.Table("admin_logs")
+	query := h.engine.Table("admin_log")
 	if action != "" {
 		query = query.Where("action = ?", action)
 	}

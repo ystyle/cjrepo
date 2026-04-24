@@ -21,8 +21,15 @@ func NewOrganizationHandler(engine *xorm.Engine) *OrganizationHandler {
 }
 
 func (h *OrganizationHandler) ListOrganizations(c *fiber.Ctx) error {
+	search := c.Query("search", "")
+
+	query := h.engine.Where("deleted_at IS NULL")
+	if search != "" {
+		query = query.Where("name LIKE ? OR display_name LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+
 	var organizations []models.Organization
-	err := h.engine.Where("deleted_at IS NULL").OrderBy("is_default DESC, created_at DESC").Find(&organizations)
+	err := query.OrderBy("is_default DESC, created_at DESC").Find(&organizations)
 	if err != nil {
 		log.Printf("[ERROR] Failed to list organizations: %v", err)
 		return c.Status(500).JSON(fiber.Map{

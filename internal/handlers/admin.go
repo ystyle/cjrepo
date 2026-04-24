@@ -413,8 +413,15 @@ func (h *AdminHandler) HardDeletePackage(c *fiber.Ctx) error {
 
 // ListUsers 获取用户列表
 func (h *AdminHandler) ListUsers(c *fiber.Ctx) error {
+	search := c.Query("search", "")
+
+	query := h.engine.OrderBy("created_at DESC")
+	if search != "" {
+		query = query.Where("username LIKE ? OR email LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+
 	var users []models.User
-	err := h.engine.OrderBy("created_at DESC").Find(&users)
+	err := query.Find(&users)
 
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{

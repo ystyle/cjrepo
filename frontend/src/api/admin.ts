@@ -147,10 +147,11 @@ export const hardDeletePackage = (id: number) => {
 }
 
 // 获取所有用户
-export const getUsers = () => {
+export const getUsers = (params?: { search?: string }) => {
   return request<User[]>({
     url: '/admin/users',
     method: 'get',
+    params,
   })
 }
 
@@ -403,10 +404,11 @@ export interface UpdateOrganizationRequest {
   is_default?: boolean
 }
 
-export const getOrganizations = () => {
+export const getOrganizations = (params?: { search?: string }) => {
   return request<Organization[]>({
     url: '/admin/organizations',
     method: 'get',
+    params,
   })
 }
 

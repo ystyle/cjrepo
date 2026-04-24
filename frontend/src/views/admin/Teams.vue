@@ -17,8 +17,6 @@ import {
   ElIcon,
   ElTooltip,
   ElPopconfirm,
-  ElCheckbox,
-  ElCheckboxGroup,
 } from 'element-plus'
 import {
   Plus,
@@ -41,7 +39,6 @@ import {
   getTeamMembers,
   updateTeamMembers,
   type Team,
-  type TeamOrganization,
   type TeamPackage,
   type TeamMember,
 } from '../../api/team'
@@ -63,14 +60,10 @@ const packagesDialogVisible = ref(false)
 const membersDialogVisible = ref(false)
 const currentTeam = ref<Team | null>(null)
 
-const organizations = ref<Organization[]>([])
-const users = ref<User[]>([])
-const teamOrganizations = ref<TeamOrganization[]>([])
-const teamPackages = ref<TeamPackage[]>([])
-const teamMembers = ref<TeamMember[]>([])
-
 const selectedOrgIds = ref<(number | null)[]>([])
 const selectedUserIds = ref<number[]>([])
+const orgOptions = ref<Organization[]>([])
+const userOptions = ref<User[]>([])
 
 const formData = ref({
   name: '',
@@ -111,24 +104,6 @@ const loadTeams = async () => {
     ElMessage.error(error.response?.data?.error || '加载团队列表失败')
   } finally {
     loading.value = false
-  }
-}
-
-const loadOrganizations = async () => {
-  try {
-    const data = await getOrganizations()
-    organizations.value = data || []
-  } catch (error: any) {
-    ElMessage.error('加载组织列表失败')
-  }
-}
-
-const loadUsers = async () => {
-  try {
-    const data = await getUsers()
-    users.value = data || []
-  } catch (error: any) {
-    ElMessage.error('加载用户列表失败')
   }
 }
 
@@ -201,12 +176,21 @@ const handleDelete = async (team: Team) => {
 const openOrgsDialog = async (team: Team) => {
   currentTeam.value = team
   orgsDialogVisible.value = true
-  await loadOrganizations()
+  selectedOrgIds.value = []
   const data = await getTeamOrganizations(team.id)
-  teamOrganizations.value = data || []
   selectedOrgIds.value = data?.map((o: TeamOrganization) => o.organization_id) || []
-  if (!selectedOrgIds.value.includes(null)) {
-    selectedOrgIds.value = selectedOrgIds.value.filter((id) => id !== null)
+}
+
+const searchOrgs = async (keyword: string) => {
+  if (!keyword) {
+    orgOptions.value = []
+    return
+  }
+  try {
+    const data = await getOrganizations({ search: keyword })
+    orgOptions.value = data || []
+  } catch {
+    orgOptions.value = []
   }
 }
 
@@ -225,7 +209,6 @@ const saveOrgs = async () => {
 const openPackagesDialog = async (team: Team) => {
   currentTeam.value = team
   packagesDialogVisible.value = true
-  await loadOrganizations()
   const data = await getTeamPackages(team.id)
   teamPackages.value = data || []
   newPackages.value = data?.map((p: TeamPackage) => ({
@@ -235,11 +218,25 @@ const openPackagesDialog = async (team: Team) => {
   })) || []
 }
 
+const searchPkgOrgs = async (keyword: string, row: any) => {
+  if (!keyword) {
+    row._orgOptions = []
+    return
+  }
+  try {
+    const data = await getOrganizations({ search: keyword })
+    row._orgOptions = data || []
+  } catch {
+    row._orgOptions = []
+  }
+}
+
 const addPackageRow = () => {
   newPackages.value.push({
     organization: '',
     package_name: '',
     permission: 'read',
+    _orgOptions: [],
   })
 }
 
@@ -265,10 +262,23 @@ const savePackages = async () => {
 const openMembersDialog = async (team: Team) => {
   currentTeam.value = team
   membersDialogVisible.value = true
-  await loadUsers()
+  selectedUserIds.value = []
   const data = await getTeamMembers(team.id)
   teamMembers.value = data || []
   selectedUserIds.value = data?.map((m: TeamMember) => m.user_id) || []
+}
+
+const searchUsers = async (keyword: string) => {
+  if (!keyword) {
+    userOptions.value = []
+    return
+  }
+  try {
+    const data = await getUsers({ search: keyword })
+    userOptions.value = data || []
+  } catch {
+    userOptions.value = []
+  }
 }
 
 const saveMembers = async () => {
@@ -463,20 +473,25 @@ onMounted(() => {
       width="600px"
     >
       <div class="dialog-content">
-        <p class="dialog-tip">选择团队可操作的组织：</p>
-        <el-checkbox-group v-model="selectedOrgIds" class="org-checkbox-group">
-          <el-checkbox :value="null" label="(无组织包)">
-            <el-tag size="small" type="info">无组织包</el-tag>
-          </el-checkbox>
-          <el-checkbox
-            v-for="org in organizations"
+        <p class="dialog-tip">搜索并选择团队可操作的组织：</p>
+        <el-select
+          v-model="selectedOrgIds"
+          multiple
+          filterable
+          remote
+          reserve-keyword
+          placeholder="搜索组织名称"
+          :remote-method="searchOrgs"
+          style="width: 100%"
+        >
+          <el-option :value="null" label="(无组织包)" />
+          <el-option
+            v-for="org in orgOptions"
             :key="org.id"
             :value="org.id"
-            :label="org.id"
-          >
-            {{ org.display_name || org.name }}
-          </el-checkbox>
-        </el-checkbox-group>
+            :label="org.display_name || org.name"
+          />
+        </el-select>
       </div>
 
       <template #footer>
@@ -497,16 +512,20 @@ onMounted(() => {
         </el-button>
         <el-table :data="newPackages" stripe style="margin-top: 10px">
           <el-table-column prop="organization" label="组织" width="150">
-            <template #default="{ row, $index }">
+            <template #default="{ row }">
               <el-select
                 v-model="row.organization"
-                placeholder="选择组织"
+                placeholder="搜索组织"
                 size="small"
+                filterable
+                remote
+                reserve-keyword
                 clearable
+                :remote-method="(kw: string) => searchPkgOrgs(kw, row)"
               >
                 <el-option value="" label="(无组织)" />
                 <el-option
-                  v-for="org in organizations"
+                  v-for="org in row._orgOptions || []"
                   :key="org.id"
                   :value="org.name"
                   :label="org.display_name || org.name"
@@ -546,13 +565,22 @@ onMounted(() => {
       width="600px"
     >
       <div class="dialog-content">
-        <p class="dialog-tip">选择团队成员：</p>
-        <el-checkbox-group v-model="selectedUserIds" class="user-checkbox-group">
-          <el-checkbox
-            v-for="user in users"
+        <p class="dialog-tip">搜索并选择团队成员：</p>
+        <el-select
+          v-model="selectedUserIds"
+          multiple
+          filterable
+          remote
+          reserve-keyword
+          placeholder="搜索用户名"
+          :remote-method="searchUsers"
+          style="width: 100%"
+        >
+          <el-option
+            v-for="user in userOptions"
             :key="user.id"
             :value="user.id"
-            :label="user.id"
+            :label="`${user.username} (${user.email})`"
           >
             <div class="user-item">
               <span class="user-name">{{ user.username }}</span>
@@ -560,8 +588,8 @@ onMounted(() => {
                 {{ user.is_active ? '活跃' : '禁用' }}
               </el-tag>
             </div>
-          </el-checkbox>
-        </el-checkbox-group>
+          </el-option>
+        </el-select>
       </div>
 
       <template #footer>

@@ -24,7 +24,9 @@ import {
   resetUserToken,
   toggleUser,
   deleteUser,
+  getOrganizations,
   type User as UserType,
+  type Organization,
 } from '../../api/admin'
 
 const users = ref<UserType[]>([])
@@ -33,10 +35,14 @@ const currentPage = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
 
+const organizations = ref<Organization[]>([])
+const organizationsLoading = ref(false)
+
 const createDialog = ref(false)
 const createForm = ref({
   username: '',
   email: '',
+  organization_id: undefined as number | undefined,
 })
 
 const tokenDialog = ref(false)
@@ -57,6 +63,15 @@ const loadUsers = async () => {
 }
 
 const openCreateDialog = async () => {
+  organizationsLoading.value = true
+  try {
+    const res = await getOrganizations()
+    organizations.value = res.data || []
+  } catch (error: any) {
+    console.error('加载组织列表失败:', error)
+  } finally {
+    organizationsLoading.value = false
+  }
   createDialog.value = true
 }
 
@@ -76,7 +91,7 @@ const handleCreate = async () => {
     tokenUser.value = data
     tokenDialog.value = true
 
-    createForm.value = { username: '', email: '' }
+    createForm.value = { username: '', email: '', organization_id: undefined }
     loadUsers()
   } catch (error: any) {
     ElMessage.error(error.message || '创建用户失败')
@@ -264,6 +279,27 @@ onMounted(() => {
             type="email"
             placeholder="请输入邮箱"
           />
+        </el-form-item>
+        <el-form-item label="所属组织">
+          <el-select
+            v-model="createForm.organization_id"
+            placeholder="请选择组织（可选）"
+            clearable
+            style="width: 100%"
+            :loading="organizationsLoading"
+          >
+            <el-option
+              v-for="org in organizations"
+              :key="org.id"
+              :label="org.display_name || org.name"
+              :value="org.id"
+            >
+              <span>{{ org.display_name || org.name }}</span>
+              <span v-if="org.is_default" style="color: #8492a6; font-size: 12px; margin-left: 8px">
+                (默认)
+              </span>
+            </el-option>
+          </el-select>
         </el-form-item>
       </el-form>
 

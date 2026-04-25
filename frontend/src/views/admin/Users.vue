@@ -401,4 +401,10 @@ onMounted(() => {
     flex: 1;
   }
 }
+
+.pagination-wrapper {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
 </style>

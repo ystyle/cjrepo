@@ -30,7 +30,7 @@ jobs:
         run: |
           cd docs-site
           pnpm install --frozen-lockfile
-          DOCS_BASE=/docs/ pnpm build
+          DOCS_BASE=/cjrepo/docs/ pnpm build
 
       - name: 准备发布目录
         run: |

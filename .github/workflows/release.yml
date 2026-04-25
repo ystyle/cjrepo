@@ -32,7 +32,7 @@ jobs:
         run: cd frontend && pnpm install --frozen-lockfile && pnpm build
 
       - name: 构建文档
-        run: cd docs-site && pnpm install --frozen-lockfile && DOCS_BASE=/docs/ pnpm build
+        run: cd docs-site && pnpm install --frozen-lockfile && DOCS_BASE=/cjrepo/docs/ pnpm build
 
       - name: 构建 Linux amd64
         run: CGO_ENABLED=1 go build -o cjrepo-linux-amd64 .

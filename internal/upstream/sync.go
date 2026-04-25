@@ -1,6 +1,7 @@
 package upstream
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -86,12 +87,18 @@ func (s *Sync) buildPackageURL(baseURL, name, version, org string) string {
 func (s *Sync) buildIndexURL(baseURL, name, org string) string {
 	baseURL = strings.TrimSuffix(baseURL, "/")
 
-	// 计算索引路径
-	if len(name) < 2 {
-		name = name + "__" // 补齐长度
+	// 计算索引路径，格式: /index/{first2}/{next2}/{name}
+	// 根据文档: aabbcc → /index/aa/bb/aabbcc, dep → /index/de/p/dep
+	if len(name) < 3 {
+		return ""
 	}
 	mo := name[0:2]
-	du := string(name[1])
+	du := ""
+	if len(name) >= 4 {
+		du = name[2:4] // 第3-4字符
+	} else {
+		du = string(name[2]) // 只有3字符时取第3个
+	}
 
 	url := fmt.Sprintf("%s/index/%s/%s/%s", baseURL, mo, du, name)
 	if org != "" {
@@ -283,6 +290,41 @@ func (s *Sync) IsCacheExpired(pkg *models.Package, ttl int) bool {
 		return false // 缓存永不过期
 	}
 	return time.Since(pkg.UpdatedAt) > time.Duration(ttl)*time.Second
+}
+
+// PublishPackage 发布包到上游
+// body 是 .cjp 文件内容（二进制协议格式：meta-data 段 + tarball 段）
+// 协议：POST /pkg/{name}?organization={org}，Authorization: {auth_token}，body 为二进制流
+func (s *Sync) PublishPackage(upstream *models.Upstream, pkg *models.Package, body []byte) error {
+	registry := strings.TrimRight(upstream.URL, "/")
+	if strings.HasSuffix(registry, "/registry") {
+		registry = strings.TrimSuffix(registry, "/registry")
+	}
+	url := fmt.Sprintf("%s/pkg/%s", registry, pkg.Name)
+	if pkg.Organization != "" {
+		url += "?organization=" + pkg.Organization
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+	if upstream.AuthToken != "" {
+		req.Header.Set("Authorization", upstream.AuthToken)
+	}
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("http post: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("upstream returned %d: %s", resp.StatusCode, string(respBody))
+	}
+	return nil
 }
 
 // DownloadFromUpstream 从上游下载tarball

@@ -40,7 +40,7 @@ func (h *IndexHandler) HandleIndex(c *fiber.Ctx) error {
 	fullName := c.Params("name")  // This is the complete package name
 	organization := c.Query("organization", "")
 
-	if len(fullName) < 4 {
+	if len(fullName) < 3 {
 		return c.Status(400).JSON(fiber.Map{
 			"error": "invalid package name",
 		})

@@ -25,6 +25,7 @@ import {
 import { Delete, Refresh, Document, Download, View, Search } from '@element-plus/icons-vue'
 import { getAdminPackages, deletePackage, getPackageVersions, type Package } from '../../api/admin'
 import { getOrganizations, type Organization } from '../../api/public'
+import dayjs from 'dayjs'
 
 const packages = ref<Package[]>([])
 const loading = ref(false)
@@ -132,7 +133,7 @@ const formatSize = (bytes: number) => {
 }
 
 const formatDate = (date: string) => {
-  return new Date(date).toLocaleString('zh-CN')
+  return date ? dayjs(date).format('YYYY-MM-DD HH:mm:ss') : '-'
 }
 
 onMounted(() => {

@@ -28,6 +28,7 @@ import {
   type User as UserType,
   type Organization,
 } from '../../api/admin'
+import dayjs from 'dayjs'
 
 const users = ref<UserType[]>([])
 const loading = ref(false)
@@ -156,7 +157,7 @@ const copyRowToken = async (user: UserType) => {
 }
 
 const formatDate = (date: string) => {
-  return new Date(date).toLocaleString('zh-CN')
+  return date ? dayjs(date).format('YYYY-MM-DD HH:mm:ss') : '-'
 }
 
 const maskToken = (token: string) => {

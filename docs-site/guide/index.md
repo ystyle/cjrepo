@@ -29,7 +29,7 @@ cjpm 客户端通过 `cangjie-repo.toml` 配置仓库地址和 Token，配置方
 
 ```toml
 [repository.home]
-  registry = "http://localhost:8060/registry"
+  registry = "http://localhost:8060"
   token = "<user_token>"
 ```
 

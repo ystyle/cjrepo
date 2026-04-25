@@ -28,6 +28,7 @@ import {
   type PublishLog,
   type AdminLog,
 } from '../../api/admin'
+import dayjs from 'dayjs'
 
 const activeTab = ref('publish')
 
@@ -143,7 +144,7 @@ const handleRefresh = () => {
 }
 
 const formatDate = (date: string) => {
-  return new Date(date).toLocaleString('zh-CN')
+  return date ? dayjs(date).format('YYYY-MM-DD HH:mm:ss') : '-'
 }
 
 const getStatusType = (status: string) => {

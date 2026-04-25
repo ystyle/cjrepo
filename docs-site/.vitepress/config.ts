@@ -20,6 +20,7 @@ export default defineConfig({
         { text: '用户管理', link: '/guide/users' },
         { text: '团队权限', link: '/guide/teams' },
         { text: '上游代理', link: '/guide/upstream' },
+        { text: '发布计划', link: '/guide/publish-plan' },
         { text: '常见问题', link: '/guide/faq' },
       ],
       '/deploy/': [
@@ -29,11 +30,6 @@ export default defineConfig({
       ],
       '/api/': [
         { text: '概述', link: '/api/' },
-      ],
-      '/deploy/': [
-        { text: '部署指南', link: '/deploy/' },
-        { text: 'Docker', link: '/deploy/docker' },
-        { text: '环境变量', link: '/deploy/env' },
       ],
     },
     socialLinks: [

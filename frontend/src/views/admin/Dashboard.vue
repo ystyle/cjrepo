@@ -21,6 +21,7 @@ import {
   Upload,
   Refresh,
   Box,
+  Flag,
 } from '@element-plus/icons-vue'
 import { getDashboardStats } from '../../api/admin'
 
@@ -158,23 +159,23 @@ onMounted(() => {
         </el-card>
       </el-col>
       <el-col :xs="24" :sm="8">
-        <el-card shadow="hover" class="action-card" @click="router.push('/admin/users')">
+        <el-card shadow="hover" class="action-card" @click="router.push('/admin/teams')">
           <div class="action-content">
             <el-icon :size="32" color="#67c23a"><User /></el-icon>
             <div>
-              <h3>用户管理</h3>
-              <p>管理用户和权限</p>
+              <h3>团队管理</h3>
+              <p>管理团队和成员权限</p>
             </div>
           </div>
         </el-card>
       </el-col>
       <el-col :xs="24" :sm="8">
-        <el-card shadow="hover" class="action-card" @click="router.push('/admin/logs')">
+        <el-card shadow="hover" class="action-card" @click="router.push('/admin/publish-plans')">
           <div class="action-content">
-            <el-icon :size="32" color="#e6a23c"><Collection /></el-icon>
+            <el-icon :size="32" color="#e6a23c"><Flag /></el-icon>
             <div>
-              <h3>操作日志</h3>
-              <p>查看系统操作记录</p>
+              <h3>发布计划</h3>
+              <p>批量发布包到上游</p>
             </div>
           </div>
         </el-card>

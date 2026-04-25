@@ -90,6 +90,24 @@ const router = createRouter({
           component: () => import('../views/admin/Teams.vue'),
           meta: { title: '团队管理' },
         },
+        {
+          path: 'publish-plans',
+          name: 'admin-publish-plans',
+          component: () => import('../views/admin/PublishPlans.vue'),
+          meta: { title: '发布计划' },
+        },
+        {
+          path: 'publish-plans/create',
+          name: 'admin-publish-plan-create',
+          component: () => import('../views/admin/PublishPlanCreate.vue'),
+          meta: { title: '新建发布计划' },
+        },
+        {
+          path: 'publish-plans/:id',
+          name: 'admin-publish-plan-detail',
+          component: () => import('../views/admin/PublishPlanDetail.vue'),
+          meta: { title: '发布计划详情' },
+        },
       ],
     },
 

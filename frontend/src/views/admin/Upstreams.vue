@@ -40,6 +40,7 @@ import {
   type CreateUpstreamRequest,
   type UpdateUpstreamRequest,
 } from '../../api/admin'
+import dayjs from 'dayjs'
 
 const upstreams = ref<Upstream[]>([])
 const loading = ref(false)
@@ -335,7 +336,7 @@ onMounted(() => {
         <el-table-column prop="last_sync_at" label="最后同步" width="180">
           <template #default="{ row }">
             <span v-if="row.last_sync_at" class="sync-time">
-              {{ new Date(row.last_sync_at).toLocaleString('zh-CN') }}
+              {{ row.last_sync_at ? dayjs(row.last_sync_at).format('YYYY-MM-DD HH:mm:ss') : '-' }}
             </span>
             <span v-else class="sync-time empty">未同步</span>
           </template>

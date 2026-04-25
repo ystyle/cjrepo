@@ -20,6 +20,7 @@ import (
 	"ystyle.top/go/cjrepo/internal/middleware"
 	"ystyle.top/go/cjrepo/internal/models"
 	"ystyle.top/go/cjrepo/internal/storage"
+	"ystyle.top/go/cjrepo/internal/task"
 	upstream2 "ystyle.top/go/cjrepo/internal/upstream"
 	"ystyle.top/go/cjrepo/internal/version"
 )
@@ -83,7 +84,8 @@ func printHelp() {
 }
 
 func printVersion() {
-	fmt.Println("CJRepo v1.0.0 - 仓颉中央库服务")
+	_, _, v := version.GetBuildInfo()
+	fmt.Printf("CJRepo %s - 仓颉中央库服务\n", v)
 }
 
 func startServer() {
@@ -132,8 +134,12 @@ func startServer() {
 	app.Use(logger.New())
 	app.Use(recover.New())
 
+	// 初始化发布计划任务管理器
+	publishPlanTask := task.NewTaskManager(engine, upstreamSync)
+	publishPlanTask.Init()
+
 	// 6. Register routes
-	setupRoutes(app, engine, storageMgr, authService, upstreamSync, requireAuth)
+	setupRoutes(app, engine, storageMgr, authService, upstreamSync, requireAuth, publishPlanTask)
 
 	// 6. Start server
 	port := os.Getenv("CJREPO_PORT")
@@ -170,6 +176,8 @@ func initDatabase(path string, defaultOrg string) (*xorm.Engine, error) {
 		new(models.TeamPackage),
 		new(models.TeamMember),
 		new(models.Migration),
+		new(models.PublishPlan),
+		new(models.PublishPlanItem),
 	); err != nil {
 		return nil, fmt.Errorf("failed to sync database: %w", err)
 	}
@@ -214,7 +222,7 @@ func initDatabase(path string, defaultOrg string) (*xorm.Engine, error) {
 }
 
 // setupRoutes configures all application routes
-func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manager, authService *auth.AuthService, upstreamSync *upstream2.Sync, requireAuth bool) {
+func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manager, authService *auth.AuthService, upstreamSync *upstream2.Sync, requireAuth bool, publishPlanTask *task.TaskManager) {
 	// Health check
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "ok"})
@@ -311,6 +319,19 @@ func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manage
 	admin.Put("/teams/:id/packages", teamHandler.UpdateTeamPackages)
 	admin.Get("/teams/:id/members", teamHandler.ListTeamMembers)
 	admin.Put("/teams/:id/members", teamHandler.UpdateTeamMembers)
+
+	// Publish plan management
+	publishPlanHandler := handlers.NewPublishPlanHandler(engine, publishPlanTask, upstreamSync)
+	admin.Get("/publish-plans", publishPlanHandler.List)
+	admin.Post("/publish-plans", publishPlanHandler.Create)
+	admin.Post("/publish-plans/analyze", publishPlanHandler.Analyze)
+	admin.Get("/publish-plans/:id", publishPlanHandler.Get)
+	admin.Put("/publish-plans/:id/items", publishPlanHandler.UpdateItems)
+	admin.Delete("/publish-plans/:id", publishPlanHandler.Delete)
+	admin.Post("/publish-plans/:id/start", publishPlanHandler.Start)
+	admin.Post("/publish-plans/:id/pause", publishPlanHandler.Pause)
+	admin.Post("/publish-plans/:id/resume", publishPlanHandler.Resume)
+	admin.Get("/publish-plans/:id/events", publishPlanHandler.Events)
 
 	// Docs - serve embedded VitePress site
 	app.Get("/docs/*", func(c *fiber.Ctx) error {

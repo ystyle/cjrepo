@@ -70,6 +70,9 @@ run_test "Team Permission" tests/team-permission.hurl
 # 包管理
 run_test "Package Management" tests/package-management.hurl
 
+# 发布计划
+run_test "Publish Plan" tests/publish-plan.hurl
+
 echo ""
 echo "=== Test Results ==="
 echo "Passed: ${PASSED}"

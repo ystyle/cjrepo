@@ -10,7 +10,7 @@
 ## 相关工具
 - `gh` 访问github, 回复和提交需要经过用户同意
 - 代理： `export https_proxy=http://192.168.3.6:1080`
-- 可以使用terminal-control运行后台任务
+- 可以使用terminal-control运行后台任务, 不要使用&运行后台任务
 - 可以使用agent browser来访问、调试网页
 
 ## 构建
@@ -42,14 +42,28 @@ export CJREPO_ADMIN_KEY=your-secret-key
 ## 架构
 
 ```
-internal/
-├── handlers/      # HTTP 处理器（publish/download/index/admin/public）
-├── protocol/      # cjpm 二进制协议解析器
-├── storage/       # 文件存储（storage/{org}/{name}/{version}.cjp）
-├── models/        # XORM 数据模型
-├── auth/          # JWT 认证服务
-├── middleware/    # JWT 中间件
-└── upstream/      # 上游源代理同步
+cjrepo/
+├── internal/          # Go 后端
+│   ├── handlers/      # HTTP 处理器（publish/download/index/admin/public）
+│   ├── protocol/      # cjpm 二进制协议解析器
+│   ├── storage/       # 文件存储（storage/{org}/{name}/{version}.cjp）
+│   ├── models/        # XORM 数据模型
+│   ├── auth/          # JWT 认证服务
+│   ├── middleware/    # JWT 中间件
+│   └── upstream/      # 上游源代理同步
+├── frontend/          # Vue 3 + Element Plus 管理后台（go:embed 嵌入后端）
+│   ├── src/
+│   │   ├── views/         # 页面组件
+│   │   ├── layouts/       # 布局组件
+│   │   ├── api/           # API 类型定义和请求
+│   │   ├── stores/        # Pinia 状态管理
+│   │   └── components/    # 通用组件
+│   └── package.json
+├── docs-site/          # VitePress 文档站点（go:embed 嵌入后端）
+│   ├── docs/           # Markdown 文档
+│   └── package.json
+└── tests/              # 测试
+    └── web/            # 前端功能测试 workflow
 ```
 
 ## cjpm 协议端点

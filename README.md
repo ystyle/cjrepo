@@ -10,7 +10,7 @@ cd cjrepo
 docker-compose up -d
 ```
 
-访问 http://localhost:8060 进入管理后台。
+访问 http://localhost:8060/admin 进入管理后台。
 
 ## 文档
 

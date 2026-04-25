@@ -8,7 +8,7 @@ import {
   ElMenuItem,
   ElHeader,
 } from 'element-plus'
-import { House, Box, Document, DataAnalysis, User, Connection, Setting, InfoFilled, Key, Reading } from '@element-plus/icons-vue'
+import { House, Box, Document, DataAnalysis, User, Connection, Setting, InfoFilled, Key, Reading, Upload } from '@element-plus/icons-vue'
 import { siteName } from '../stores/site'
 import CjBox from '../components/CjBox.vue'
 import AboutDialog from '../components/AboutDialog.vue'
@@ -69,6 +69,10 @@ const openDocs = () => {
         <el-menu-item index="/admin/upstreams">
           <el-icon><Connection /></el-icon>
           <span>上游管理</span>
+        </el-menu-item>
+        <el-menu-item index="/admin/publish-plans">
+          <el-icon><Upload /></el-icon>
+          <span>发布计划</span>
         </el-menu-item>
         <el-menu-item index="/admin/logs">
           <el-icon><Document /></el-icon>

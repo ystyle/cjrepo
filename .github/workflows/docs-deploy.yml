@@ -6,6 +6,7 @@ on:
     paths:
       - 'docs-site/**'
       - '.github/pages/**'
+      - '.github/workflows/docs-deploy.yml'
 
 jobs:
   deploy:

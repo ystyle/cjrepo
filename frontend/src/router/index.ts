@@ -88,6 +88,12 @@ const router = createRouter({
           component: () => import('../views/admin/Organizations.vue'),
           meta: { title: '组织管理' },
         },
+        {
+          path: 'teams',
+          name: 'admin-teams',
+          component: () => import('../views/admin/Teams.vue'),
+          meta: { title: '团队管理' },
+        },
       ],
     },
 

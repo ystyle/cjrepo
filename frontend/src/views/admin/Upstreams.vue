@@ -90,7 +90,7 @@ const openCreateDialog = () => {
   editingId.value = null
   formData.value = {
     name: '',
-    url: 'https://pkg.cangjie-lang.cn/cjpm', // 预填充默认地址
+    url: 'https://pkg.cangjie-lang.cn/registry', // 预填充默认地址
     enabled: true,
     cache_ttl: 86400,
     auth_token: '',
@@ -416,12 +416,12 @@ onMounted(() => {
         <el-form-item label="上游地址" prop="url">
           <el-input
             v-model="formData.url"
-            placeholder="https://pkg.cangjie-lang.cn/cjpm"
+            placeholder="https://pkg.cangjie-lang.cn/registry"
             clearable
           />
           <div class="form-tip">
             <el-icon><InfoFilled /></el-icon>
-            <span>仓颉中央库地址: https://pkg.cangjie-lang.cn/cjpm</span>
+            <span>仓颉中央库地址: https://pkg.cangjie-lang.cn/registry</span>
           </div>
         </el-form-item>
 

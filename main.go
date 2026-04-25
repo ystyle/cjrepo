@@ -16,6 +16,7 @@ import (
 
 	"ystyle.top/go/cjrepo/internal/auth"
 	handlers "ystyle.top/go/cjrepo/internal/handlers"
+	"ystyle.top/go/cjrepo/internal/migrations"
 	"ystyle.top/go/cjrepo/internal/middleware"
 	"ystyle.top/go/cjrepo/internal/models"
 	"ystyle.top/go/cjrepo/internal/storage"
@@ -135,8 +136,14 @@ func startServer() {
 	setupRoutes(app, engine, storageMgr, authService, upstreamSync, requireAuth)
 
 	// 6. Start server
-	log.Printf("Cangjie Depot Server starting on %s", defaultPort)
-	log.Fatal(app.Listen(defaultPort))
+	port := os.Getenv("CJREPO_PORT")
+	if port == "" {
+		port = defaultPort
+	} else if !strings.HasPrefix(port, ":") {
+		port = ":" + port
+	}
+	log.Printf("Cangjie Depot Server starting on %s", port)
+	log.Fatal(app.Listen(port))
 }
 
 // initDatabase initializes the database connection and creates tables
@@ -158,6 +165,11 @@ func initDatabase(path string, defaultOrg string) (*xorm.Engine, error) {
 		new(models.Upstream),
 		new(models.Organization),
 		new(models.OrganizationMember),
+		new(models.Team),
+		new(models.TeamOrganization),
+		new(models.TeamPackage),
+		new(models.TeamMember),
+		new(models.Migration),
 	); err != nil {
 		return nil, fmt.Errorf("failed to sync database: %w", err)
 	}
@@ -192,6 +204,12 @@ func initDatabase(path string, defaultOrg string) (*xorm.Engine, error) {
 	}
 
 	log.Println("Database initialized successfully")
+
+	// Run migrations
+	if err := migrations.Run(engine); err != nil {
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
+	}
+
 	return engine, nil
 }
 
@@ -280,9 +298,19 @@ func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manage
 	admin.Post("/organizations", organizationHandler.CreateOrganization)
 	admin.Put("/organizations/:id", organizationHandler.UpdateOrganization)
 	admin.Delete("/organizations/:id", organizationHandler.DeleteOrganization)
-	admin.Get("/organizations/:id/members", organizationHandler.GetOrganizationMembers)
-	admin.Post("/organizations/:id/members", organizationHandler.AddMember)
-	admin.Delete("/organizations/:id/members/:user_id", organizationHandler.RemoveMember)
+
+	// Team management
+	teamHandler := handlers.NewTeamHandler(engine)
+	admin.Get("/teams", teamHandler.ListTeams)
+	admin.Post("/teams", teamHandler.CreateTeam)
+	admin.Put("/teams/:id", teamHandler.UpdateTeam)
+	admin.Delete("/teams/:id", teamHandler.DeleteTeam)
+	admin.Get("/teams/:id/organizations", teamHandler.ListTeamOrganizations)
+	admin.Put("/teams/:id/organizations", teamHandler.UpdateTeamOrganizations)
+	admin.Get("/teams/:id/packages", teamHandler.ListTeamPackages)
+	admin.Put("/teams/:id/packages", teamHandler.UpdateTeamPackages)
+	admin.Get("/teams/:id/members", teamHandler.ListTeamMembers)
+	admin.Put("/teams/:id/members", teamHandler.UpdateTeamMembers)
 
 	// SPA fallback - handle all non-API routes
 	app.All("/*", func(c *fiber.Ctx) error {

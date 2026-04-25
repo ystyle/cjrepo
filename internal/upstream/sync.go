@@ -71,7 +71,7 @@ func (s *Sync) FetchPackageFromUpstream(upstream *models.Upstream, name, version
 
 // buildPackageURL 构建包的上游URL
 func (s *Sync) buildPackageURL(baseURL, name, version, org string) string {
-	// 仓颉中央库格式: https://pkg.cangjie-lang.cn/cjpm/pkg/{name}/{version}?organization={org}
+	// 仓颉中央库格式: https://pkg.cangjie-lang.cn/registry/pkg/{name}/{version}?organization={org}
 	baseURL = strings.TrimSuffix(baseURL, "/")
 
 	url := fmt.Sprintf("%s/pkg/%s/%s", baseURL, name, version)
@@ -169,9 +169,9 @@ func (s *Sync) parseIndexForVersion(indexData []byte, name, version, org string)
 
 			// 找到了，创建包对象
 			pkg := &models.Package{
-				Name:         name,
-				Version:      version,
-				Organization: org,
+				Name:          name,
+				Version:       version,
+				Organization:  org,
 				TarballSHA256: indexEntry.SHA256,
 			}
 

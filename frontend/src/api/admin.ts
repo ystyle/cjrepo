@@ -153,7 +153,7 @@ export const hardDeletePackage = (id: number) => {
 }
 
 // 获取所有用户
-export const getUsers = (params?: { page?: number; pageSize?: number }) => {
+export const getUsers = (params?: { page?: number; pageSize?: number; search?: string }) => {
   return request<PaginatedResponse<User>>({
     url: '/admin/users',
     method: 'get',
@@ -411,22 +411,8 @@ export interface UpdateOrganizationRequest {
   is_default?: boolean
 }
 
-// 组织成员
-export interface OrganizationMember {
-  user_id: number
-  username: string
-  email: string
-  is_active: boolean
-  created_at: string
-}
-
-// 添加成员请求
-export interface AddMemberRequest {
-  username: string
-}
-
 // 获取组织列表
-export const getOrganizations = (params?: { page?: number; pageSize?: number }) => {
+export const getOrganizations = (params?: { page?: number; pageSize?: number; search?: string }) => {
   return request<PaginatedResponse<Organization>>({
     url: '/admin/organizations',
     method: 'get',
@@ -434,7 +420,6 @@ export const getOrganizations = (params?: { page?: number; pageSize?: number }) 
   })
 }
 
-// 创建组织
 export const createOrganization = (data: CreateOrganizationRequest) => {
   return request<Organization>({
     url: '/admin/organizations',
@@ -443,7 +428,6 @@ export const createOrganization = (data: CreateOrganizationRequest) => {
   })
 }
 
-// 更新组织
 export const updateOrganization = (id: number, data: UpdateOrganizationRequest) => {
   return request<Organization>({
     url: `/admin/organizations/${id}`,
@@ -452,42 +436,9 @@ export const updateOrganization = (id: number, data: UpdateOrganizationRequest) 
   })
 }
 
-// 删除组织
 export const deleteOrganization = (id: number) => {
   return request({
     url: `/admin/organizations/${id}`,
-    method: 'delete',
-  })
-}
-
-// 获取组织成员
-export const getOrganizationMembers = (id: number) => {
-  return request<OrganizationMember[]>({
-    url: `/admin/organizations/${id}/members`,
-    method: 'get',
-  })
-}
-
-// 添加组织成员
-export const addOrganizationMember = (id: number, data: AddMemberRequest) => {
-  return request<{
-    message: string
-    user: {
-      id: number
-      username: string
-      email: string
-    }
-  }>({
-    url: `/admin/organizations/${id}/members`,
-    method: 'post',
-    data,
-  })
-}
-
-// 移除组织成员
-export const removeOrganizationMember = (id: number, userId: number) => {
-  return request({
-    url: `/admin/organizations/${id}/members/${userId}`,
     method: 'delete',
   })
 }

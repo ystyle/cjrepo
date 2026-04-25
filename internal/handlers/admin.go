@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"time"
@@ -424,11 +423,26 @@ type ListUsersResponse struct {
 func (h *AdminHandler) ListUsers(c *fiber.Ctx) error {
 	page := c.QueryInt("page", 1)
 	pageSize := c.QueryInt("pageSize", 20)
+	search := c.Query("search", "")
 
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	// 统计总数
 	total, _ := h.engine.Count(&models.User{})
 
+	// 构建查询
+	query := h.engine.OrderBy("created_at DESC")
+	if search != "" {
+		query = query.Where("username LIKE ? OR email LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+
 	var users []models.User
-	h.engine.OrderBy("created_at DESC").Limit(pageSize, (page-1)*pageSize).Find(&users)
+	query.Limit(pageSize, (page-1)*pageSize).Find(&users)
 
 	if users == nil {
 		users = []models.User{}
@@ -444,12 +458,10 @@ func (h *AdminHandler) ListUsers(c *fiber.Ctx) error {
 
 // CreateUserRequest 创建用户请求
 type CreateUserRequest struct {
-	Username       string `json:"username"`
-	Email          string `json:"email"`
-	OrganizationID int64  `json:"organization_id"` // 可选：创建后直接加入组织
+	Username string `json:"username"`
+	Email    string `json:"email"`
 }
 
-// CreateUser 创建用户
 func (h *AdminHandler) CreateUser(c *fiber.Ctx) error {
 	var req CreateUserRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -458,7 +470,6 @@ func (h *AdminHandler) CreateUser(c *fiber.Ctx) error {
 		})
 	}
 
-	// 检查用户名是否已存在
 	exists, _ := h.engine.Where("username = ?", req.Username).Exist(&models.User{})
 	if exists {
 		return c.Status(409).JSON(fiber.Map{
@@ -466,10 +477,8 @@ func (h *AdminHandler) CreateUser(c *fiber.Ctx) error {
 		})
 	}
 
-	// 生成 token
 	token := fmt.Sprintf("token-%s-%d", req.Username, time.Now().Unix())
 
-	// 创建用户
 	user := &models.User{
 		Username: req.Username,
 		Email:    req.Email,
@@ -484,21 +493,6 @@ func (h *AdminHandler) CreateUser(c *fiber.Ctx) error {
 		})
 	}
 
-	// 如果指定了组织，自动添加到组织
-	if req.OrganizationID > 0 {
-		member := &models.OrganizationMember{
-			OrganizationID: req.OrganizationID,
-			UserID:         user.ID,
-		}
-		if _, err := h.engine.Insert(member); err != nil {
-			// 组织添加失败，但不影响用户创建
-			log.Printf("[WARN] Failed to add user %d to organization %d: %v", user.ID, req.OrganizationID, err)
-		} else {
-			log.Printf("[INFO] Added user %s to organization %d", user.Username, req.OrganizationID)
-		}
-	}
-
-	// 记录操作日志
 	h.logAdminAction(c, "create_user", fmt.Sprintf("%d", user.ID), map[string]interface{}{
 		"username": user.Username,
 		"email":    user.Email,

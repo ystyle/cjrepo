@@ -40,16 +40,9 @@ jobs:
           GOOS: linux
           GOARCH: amd64
 
-      - name: 构建 Linux arm64
-        run: CGO_ENABLED=1 go build -o cjrepo-linux-arm64 .
-        env:
-          GOOS: linux
-          GOARCH: arm64
-
       - name: 创建 Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             cjrepo-linux-amd64
-            cjrepo-linux-arm64
           generate_release_notes: true

@@ -2,6 +2,8 @@ version: '3.8'
 
 services:
   cjrepo:
+    # 也可以直接使用预构建镜像：
+    # image: ghcr.io/ystyle/cjrepo:latest
     build:
       context: .
       dockerfile: Dockerfile

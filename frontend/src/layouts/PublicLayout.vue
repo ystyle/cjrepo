@@ -15,12 +15,16 @@ const route = useRoute()
 const activeMenu = computed(() => {
   if (route.path === '/') return '1'
   if (route.path === '/packages' || route.path.startsWith('/packages/')) return '2'
-  if (route.path === '/docs') return '3'
+  if (route.path.startsWith('/docs/')) return '3'
   return '1'
 })
 
 const goToHome = () => {
   router.push('/')
+}
+
+const openDocs = () => {
+  window.open('/docs/guide/', '_self')
 }
 </script>
 
@@ -49,7 +53,7 @@ const goToHome = () => {
             <el-icon><Box /></el-icon>
             <span>包列表</span>
           </el-menu-item>
-          <el-menu-item index="/docs">
+          <el-menu-item index="/docs-guide" @click="openDocs">
             <el-icon><Document /></el-icon>
             <span>帮助文档</span>
           </el-menu-item>

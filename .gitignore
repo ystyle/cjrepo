@@ -4,3 +4,5 @@ data
 storage
 cjrepo
 cjrepo.db
+dist
+logs

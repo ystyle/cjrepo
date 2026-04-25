@@ -220,7 +220,7 @@ func (h *TeamHandler) ListTeamOrganizations(c *fiber.Ctx) error {
 	for i, to := range teamOrgs {
 		if to.OrganizationID != nil {
 			var org models.Organization
-			h.engine.ID(to.OrganizationID).Get(&org)
+			h.engine.ID(*to.OrganizationID).Get(&org)
 			result[i] = map[string]interface{}{
 				"id":              to.ID,
 				"organization_id": to.OrganizationID,

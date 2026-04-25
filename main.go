@@ -312,6 +312,39 @@ func setupRoutes(app *fiber.App, engine *xorm.Engine, storageMgr *storage.Manage
 	admin.Get("/teams/:id/members", teamHandler.ListTeamMembers)
 	admin.Put("/teams/:id/members", teamHandler.UpdateTeamMembers)
 
+	// Docs - serve embedded VitePress site
+	app.Get("/docs/*", func(c *fiber.Ctx) error {
+		requestPath := strings.TrimPrefix(c.Path(), "/docs")
+		if requestPath == "" || requestPath == "/" {
+			requestPath = "/index.html"
+		} else if strings.HasSuffix(requestPath, "/") {
+			requestPath += "index.html"
+		}
+		file, err := docsFS.ReadFile("dist/docs" + requestPath)
+		if err != nil {
+			// Try appending .html (VitePress generates .html files)
+			file, err = docsFS.ReadFile("dist/docs" + requestPath + ".html")
+			if err != nil {
+				// Fallback to 404 page
+				file, err = docsFS.ReadFile("dist/docs/404.html")
+				if err != nil {
+					return c.Status(404).SendString("Not found")
+				}
+				return c.Status(404).Type("html").Send(file)
+			}
+		}
+		ext := ""
+		if idx := strings.LastIndex(requestPath, "."); idx >= 0 {
+			ext = requestPath[idx+1:]
+		}
+		if ext != "" {
+			c.Type(ext)
+		} else {
+			c.Type("html")
+		}
+		return c.Send(file)
+	})
+
 	// SPA fallback - handle all non-API routes
 	app.All("/*", func(c *fiber.Ctx) error {
 		// Skip API routes

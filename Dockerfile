@@ -1,52 +1,41 @@
-# 第一阶段：构建前端
-FROM node:20-alpine AS frontend-builder
+# 第一阶段：构建前端 + 文档
+FROM node:20-alpine AS builder
 
-WORKDIR /frontend
+WORKDIR /workspace
 
-# 设置阿里云 Alpine 镜像源
+# 设置阿里云镜像源
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-
-# 设置阿里云 npm 镜像源
 RUN npm config set registry https://registry.npmmirror.com
 
-# 复制前端项目文件
-COPY frontend/package.json frontend/pnpm-lock.yaml ./
-
-# 安装 pnpm 和依赖
+# 安装 pnpm
 RUN npm install -g pnpm --registry=https://registry.npmmirror.com
-RUN pnpm install --frozen-lockfile
-
-# 复制源代码
-COPY frontend/ ./
 
 # 构建前端
-RUN pnpm build-only
+COPY frontend/package.json frontend/pnpm-lock.yaml ./frontend/
+RUN cd frontend && pnpm install --frozen-lockfile
+COPY frontend/ ./frontend/
+RUN cd frontend && pnpm build-only
+
+# 构建文档
+COPY docs-site/ ./docs-site/
+RUN cd docs-site && CI=true pnpm install --no-frozen-lockfile && pnpm build
 
 # 第二阶段：构建 Go 应用
 FROM golang:1.23-alpine AS go-builder
 
 WORKDIR /build
 
-# 设置 Go 中国代理
 ENV GOPROXY=https://goproxy.cn,direct
-
-# 设置阿里云 Alpine 镜像源
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-
-# 安装必要的构建工具
 RUN apk add --no-cache git gcc musl-dev sqlite-dev
 
-# 复制 go.mod 和 go.sum
 COPY go.mod go.sum* ./
-
-# 下载依赖
 RUN go mod download || true
 
-# 复制源代码和前端构建产物
 COPY . .
-COPY --from=frontend-builder /frontend/dist ./frontend/dist
+COPY --from=builder /workspace/frontend/dist ./frontend/dist
+COPY --from=builder /workspace/dist ./dist
 
-# 构建应用（包含嵌入的前端文件和构建信息）
 RUN BUILD_DATE=$(date -u '+%Y-%m-%d_%H:%M:%S') && \
     GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown") && \
     GIT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || echo "dev") && \
@@ -58,31 +47,18 @@ RUN BUILD_DATE=$(date -u '+%Y-%m-%d_%H:%M:%S') && \
 # 第三阶段：运行阶段
 FROM alpine:latest
 
-# 设置阿里云 Alpine 镜像源
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-
-# 安装运行时依赖
 RUN apk add --no-cache ca-certificates sqlite-libs
 
-# 创建非 root 用户
 RUN addgroup -g 1000 cjrepo && \
     adduser -D -u 1000 -G cjrepo cjrepo
 
-# 设置工作目录
 WORKDIR /app
-
-# 从构建阶段复制二进制文件
 COPY --from=go-builder /build/cjrepo .
 
-# 创建必要的目录
 RUN mkdir -p data storage && \
     chown -R cjrepo:cjrepo /app
 
-# 切换到非 root 用户
 USER cjrepo
-
-# 暴露端口
 EXPOSE 8060
-
-# 设置默认命令
 CMD ["./cjrepo"]

@@ -8,7 +8,7 @@ import {
   ElMenuItem,
   ElHeader,
 } from 'element-plus'
-import { House, Box, Document, DataAnalysis, User, Connection, Setting, InfoFilled, Key } from '@element-plus/icons-vue'
+import { House, Box, Document, DataAnalysis, User, Connection, Setting, InfoFilled, Key, Reading } from '@element-plus/icons-vue'
 import { siteName } from '../stores/site'
 import CjBox from '../components/CjBox.vue'
 import AboutDialog from '../components/AboutDialog.vue'
@@ -22,7 +22,13 @@ const goHome = () => {
 }
 
 const openAbout = () => {
-  aboutDialogRef.value?.open()
+  ElMessageBox.alert('CJRepo - 仓颉私有包仓库服务', '关于', {
+    confirmButtonText: '确定',
+  })
+}
+
+const openDocs = () => {
+  window.open('/docs', '_blank')
 }
 </script>
 
@@ -73,6 +79,10 @@ const openAbout = () => {
         <el-menu-item @click="goHome">
           <el-icon><House /></el-icon>
           <span>返回首页</span>
+        </el-menu-item>
+        <el-menu-item @click="openDocs">
+          <el-icon><Reading /></el-icon>
+          <span>文档</span>
         </el-menu-item>
         <el-menu-item class="about-menu" @click="openAbout">
           <el-icon><InfoFilled /></el-icon>

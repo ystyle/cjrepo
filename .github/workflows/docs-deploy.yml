@@ -1,0 +1,44 @@
+name: 部署文档
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'docs-site/**'
+      - '.github/pages/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: docs-site/pnpm-lock.yaml
+
+      - name: 构建文档
+        run: |
+          cd docs-site
+          pnpm install --frozen-lockfile
+          DOCS_BASE=/docs/ pnpm build
+
+      - name: 准备发布目录
+        run: |
+          mkdir -p deploy/docs
+          cp -r dist/docs/* deploy/docs/
+          cp .github/pages/index.html deploy/
+
+      - name: 部署到 GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: deploy
+          publish_branch: gh-pages
+          force_orphan: true

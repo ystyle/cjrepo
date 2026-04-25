@@ -138,8 +138,8 @@ const onSearchOrgInput = () => {
     const kw = searchOrgKeyword.value.trim()
     if (!kw) { searchOrgResults.value = []; return }
     try {
-      const data = await getOrganizations({ search: kw })
-      searchOrgResults.value = data || []
+      const res = await getOrganizations({ search: kw })
+      searchOrgResults.value = res?.data || []
     } catch { searchOrgResults.value = [] }
   }, 300)
 }
@@ -356,8 +356,8 @@ const onSearchMemberInput = () => {
     const kw = searchMemberKeyword.value.trim()
     if (!kw) { searchMemberResults.value = []; return }
     try {
-      const data = await getUsers({ search: kw })
-      searchMemberResults.value = data || []
+      const res = await getUsers({ search: kw })
+      searchMemberResults.value = res?.data || []
     } catch { searchMemberResults.value = [] }
   }, 300)
 }

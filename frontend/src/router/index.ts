@@ -25,11 +25,7 @@ const router = createRouter({
           name: 'package-detail',
           component: () => import('../views/PackageDetail.vue'),
         },
-        {
-          path: 'docs',
-          name: 'docs',
-          component: () => import('../views/Docs.vue'),
-        },
+
       ],
     },
 

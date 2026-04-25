@@ -17,6 +17,10 @@ import CjBox from '../components/CjBox.vue'
 
 const router = useRouter()
 
+const openDocs = () => {
+  window.open('/docs/guide/', '_self')
+}
+
 const stats = ref({
   packages: 0,
   users: 0,
@@ -101,7 +105,7 @@ const features = [
                 <el-icon><Collection /></el-icon>
                 浏览包
               </el-button>
-              <el-button size="large" @click="router.push('/docs')">
+              <el-button size="large" @click="openDocs">
                 <el-icon><Download /></el-icon>
                 快速开始
               </el-button>
@@ -226,7 +230,7 @@ const features = [
             探索包
             <el-icon><ArrowRight /></el-icon>
           </el-button>
-          <el-button size="large" plain @click="router.push('/docs')">
+          <el-button size="large" plain @click="openDocs">
             <el-icon><Download /></el-icon>
             查看文档
           </el-button>

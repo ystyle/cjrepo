@@ -1,0 +1,30 @@
+name: 构建 Docker 镜像
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 登录 GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 构建并推送 Docker 镜像
+        run: |
+          TAG=${GITHUB_REF_NAME#v}
+          docker build -t ghcr.io/ystyle/cjrepo:latest .
+          docker tag ghcr.io/ystyle/cjrepo:latest ghcr.io/ystyle/cjrepo:$TAG
+          docker push ghcr.io/ystyle/cjrepo:latest
+          docker push ghcr.io/ystyle/cjrepo:$TAG

@@ -16,11 +16,14 @@
 ## 构建
 
 ```bash
-# 后端
-go build -o cjrepo .
+# 文档（VitePress）
+cd docs-site && pnpm install && pnpm build && cd ..
 
 # 前端（需要先构建前端才能嵌入）
 cd frontend && pnpm install && pnpm build && cd ..
+
+# 后端（嵌入前端 + 文档）
+go build -o cjrepo .
 ```
 
 ## 运行

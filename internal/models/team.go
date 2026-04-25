@@ -9,6 +9,7 @@ type Team struct {
 	DisplayName string    `xorm:"VARCHAR(255) 'display_name'" json:"display_name"`
 	Description string    `xorm:"TEXT 'description'" json:"description"`
 	Permission  string    `xorm:"VARCHAR(20) NOT NULL 'permission'" json:"permission"` // read/write/overwrite
+	DeletedAt   time.Time `xorm:"deleted 'deleted_at'" json:"deleted_at"`
 	CreatedAt   time.Time `xorm:"created 'created_at'" json:"created_at"`
 	UpdatedAt   time.Time `xorm:"updated 'updated_at'" json:"updated_at"`
 }
@@ -21,13 +22,12 @@ type TeamOrganization struct {
 	CreatedAt      time.Time `xorm:"created 'created_at'" json:"created_at"`
 }
 
-// TeamPackage 团队对特定包的权限
+// TeamPackage 团队关联的特定包（权限走 team.permission）
 type TeamPackage struct {
 	ID           int64     `xorm:"pk autoincr 'i_d'" json:"id"`
 	TeamID       int64     `xorm:"NOT NULL INDEX 'team_i_d'" json:"team_id"`
 	Organization string    `xorm:"INDEX 'organization'" json:"organization"` // 空字符串表示无组织包
 	PackageName  string    `xorm:"NOT NULL INDEX 'package_name'" json:"package_name"`
-	Permission   string    `xorm:"VARCHAR(20) NOT NULL 'permission'" json:"permission"` // read/write/overwrite
 	CreatedAt    time.Time `xorm:"created 'created_at'" json:"created_at"`
 }
 

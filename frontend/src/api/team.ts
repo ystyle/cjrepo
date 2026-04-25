@@ -24,7 +24,6 @@ export interface TeamPackage {
   team_id: number
   organization: string
   package_name: string
-  permission: string
 }
 
 export interface TeamMember {
@@ -35,10 +34,19 @@ export interface TeamMember {
   is_active: boolean
 }
 
-export const getTeams = () => {
-  return request<Team[]>({
+// 团队列表分页响应
+export interface TeamsResponse {
+  data: Team[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+export const getTeams = (params?: { page?: number; pageSize?: number }) => {
+  return request<TeamsResponse>({
     url: '/admin/teams',
     method: 'get',
+    params,
   })
 }
 
@@ -100,7 +108,6 @@ export const getTeamPackages = (id: number) => {
 export const updateTeamPackages = (id: number, packages: {
   organization: string
   package_name: string
-  permission: string
 }[]) => {
   return request<TeamPackage[]>({
     url: `/admin/teams/${id}/packages`,

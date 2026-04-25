@@ -141,7 +141,7 @@ HTTP 200
 jsonpath("$.length") == 1
 jsonpath("$[0].organization_name") == "test-org"
 
-# 13. 添加团队包权限
+# 13. 添加团队包关联（权限走 team.permission）
 PUT http://localhost:8060/api/admin/teams/{{team_id}}/packages
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -149,8 +149,7 @@ Content-Type: application/json
   "packages": [
     {
       "organization": "test-org",
-      "package_name": "test-package",
-      "permission": "read"
+      "package_name": "test-package"
     }
   ]
 }
@@ -159,9 +158,8 @@ HTTP 200
 jsonpath("$.length") == 1
 jsonpath("$[0].organization") == "test-org"
 jsonpath("$[0].package_name") == "test-package"
-jsonpath("$[0].permission") == "read"
 
-# 14. 获取团队包权限列表
+# 14. 获取团队包关联列表
 GET http://localhost:8060/api/admin/teams/{{team_id}}/packages
 Authorization: Bearer {{token}}
 HTTP 200
@@ -200,7 +198,7 @@ HTTP 200
 [Asserts]
 jsonpath("$.length") == 0
 
-# 18. 清空团队包权限
+# 18. 清空团队包关联
 PUT http://localhost:8060/api/admin/teams/{{team_id}}/packages
 Authorization: Bearer {{token}}
 Content-Type: application/json

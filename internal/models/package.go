@@ -28,6 +28,9 @@ type Package struct {
 	TarballSize   int64     `json:"tarball_size"`
 	TarballSHA256 string    `xorm:"index" json:"tarball_sha256"`
 
+	// Publisher
+	PublisherID int64 `xorm:"'publisher_i_d' index" json:"publisher_id"`
+
 	// Statistics
 	DownloadCount int64     `xorm:"default 0" json:"download_count"`
 

@@ -17,7 +17,7 @@
 
 ```bash
 # 后端
-go build -o cjrepo main.go
+go build -o cjrepo .
 
 # 前端（需要先构建前端才能嵌入）
 cd frontend && pnpm install && pnpm build && cd ..
@@ -74,12 +74,24 @@ docker-compose exec cjrepo ./cjrepo user add <name> <email>
 ```
 
 ## 前端开发
->开发新功能后，需要使用`agent browser`实际操作测试一下，看看功能是否生效
+>开发新功能后，需要执行前端测试流程验证功能是否生效
 ```bash
 cd frontend
 pnpm dev        # 开发服务器
 pnpm build      # 构建（嵌入后端）
 pnpm format     # 格式化
+```
+
+## 前端测试
+
+前端功能测试使用 `tests/web/` 目录下的 workflow 定义，配合 skill:`frontend-testing-workflow` 执行。
+
+```bash
+# 启动服务器（或 dev server）
+export CJREPO_ADMIN_KEY=your-secret-key && ./cjrepo
+
+# 按文件编号顺序执行测试
+# 参考 tests/web/README.md 和对应模块的 .md 文件
 ```
 
 ## 测试验证

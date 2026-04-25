@@ -17,13 +17,31 @@ func NewTeamHandler(engine *xorm.Engine) *TeamHandler {
 	return &TeamHandler{engine: engine}
 }
 
-// ListTeams 获取团队列表
+// ListTeamsResponse 团队列表响应
+type ListTeamsResponse struct {
+	Data     []map[string]interface{} `json:"data"`
+	Total    int64                    `json:"total"`
+	Page     int                      `json:"page"`
+	PageSize int                      `json:"pageSize"`
+}
+
+// ListTeams 获取团队列表（分页）
 func (h *TeamHandler) ListTeams(c *fiber.Ctx) error {
-	var teams []models.Team
-	err := h.engine.Find(&teams)
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "database error"})
+	page := c.QueryInt("page", 1)
+	pageSize := c.QueryInt("pageSize", 20)
+	if page < 1 {
+		page = 1
 	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	// 统计总数
+	total, _ := h.engine.Count(&models.Team{})
+
+	// 分页查询
+	var teams []models.Team
+	h.engine.Limit(pageSize, (page-1)*pageSize).Find(&teams)
 
 	result := make([]map[string]interface{}, len(teams))
 	for i, team := range teams {
@@ -32,19 +50,24 @@ func (h *TeamHandler) ListTeams(c *fiber.Ctx) error {
 		pkgCount, _ := h.engine.Where("team_i_d = ?", team.ID).Count(&models.TeamPackage{})
 
 		result[i] = map[string]interface{}{
-			"id":           team.ID,
-			"name":         team.Name,
-			"display_name": team.DisplayName,
-			"description":  team.Description,
-			"permission":   team.Permission,
-			"member_count": memberCount,
-			"org_count":    orgCount,
+			"id":            team.ID,
+			"name":          team.Name,
+			"display_name":  team.DisplayName,
+			"description":   team.Description,
+			"permission":    team.Permission,
+			"member_count":  memberCount,
+			"org_count":     orgCount,
 			"package_count": pkgCount,
-			"created_at":   team.CreatedAt,
+			"created_at":    team.CreatedAt,
 		}
 	}
 
-	return c.JSON(result)
+	return c.JSON(ListTeamsResponse{
+		Data:     result,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	})
 }
 
 // CreateTeam 创建团队
@@ -217,7 +240,7 @@ func (h *TeamHandler) ListTeamOrganizations(c *fiber.Ctx) error {
 	return c.JSON(result)
 }
 
-// UpdateTeamPackages 替换团队包权限（Replace 模式）
+// UpdateTeamPackages 替换团队关联的包（Replace 模式）
 func (h *TeamHandler) UpdateTeamPackages(c *fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
@@ -228,17 +251,10 @@ func (h *TeamHandler) UpdateTeamPackages(c *fiber.Ctx) error {
 		Packages []struct {
 			Organization string `json:"organization"`
 			PackageName  string `json:"package_name"`
-			Permission   string `json:"permission"`
 		} `json:"packages"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
-	}
-
-	for _, pkg := range req.Packages {
-		if pkg.Permission != "read" && pkg.Permission != "write" && pkg.Permission != "overwrite" {
-			return c.Status(400).JSON(fiber.Map{"error": "invalid permission"})
-		}
 	}
 
 	h.engine.Where("team_i_d = ?", id).Delete(&models.TeamPackage{})
@@ -248,14 +264,12 @@ func (h *TeamHandler) UpdateTeamPackages(c *fiber.Ctx) error {
 			TeamID:       id,
 			Organization: pkg.Organization,
 			PackageName:  pkg.PackageName,
-			Permission:   pkg.Permission,
 		}
 		h.engine.Insert(teamPkg)
 	}
 
 	return h.ListTeamPackages(c)
 }
-
 // ListTeamPackages 获取团队包权限列表
 func (h *TeamHandler) ListTeamPackages(c *fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)

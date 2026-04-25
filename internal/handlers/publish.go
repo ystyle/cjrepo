@@ -140,30 +140,54 @@ func (h *PublishHandler) HandlePublish(c *fiber.Ctx) error {
 		})
 	}
 
-	// 5.5 Check permission using team-based permission system
+	// 5.5 Check permission
+
 	if !user.IsSuperuser {
+
 		checker := auth.NewPermissionChecker(h.engine)
+
+		packageExists, _ := h.checkAnyVersionExists(organization, packageName)
+
 		versionExists, _ := h.checkPackageExists(organization, packageName, metaData.Version)
 
-		var requiredPerm string
+
+
 		if versionExists {
-			requiredPerm = "overwrite"
-		} else {
-			requiredPerm = "write"
+
+			// 覆盖版本：需要 overwrite 权限
+
+			if !checker.CheckPermission(user.ID, organization, packageName, "overwrite") {
+
+				h.logPublish(organization, packageName, metaData.Version, "failed", "need overwrite permission", c)
+
+				return c.Status(403).JSON(fiber.Map{
+
+					"error": "version already exists, need overwrite permission",
+
+				})
+
+			}
+
+		} else if packageExists {
+
+			// 发布新版本：需要 write 权限
+
+			if !checker.CheckPermission(user.ID, organization, packageName, "write") {
+
+				h.logPublish(organization, packageName, metaData.Version, "failed", "permission denied", c)
+
+				return c.Status(403).JSON(fiber.Map{
+
+					"error": "permission denied",
+
+				})
+
+			}
+
 		}
 
-		if !checker.CheckPermission(user.ID, organization, packageName, requiredPerm) {
-			if versionExists {
-				h.logPublish(organization, packageName, metaData.Version, "failed", "need overwrite permission", c)
-				return c.Status(403).JSON(fiber.Map{
-					"error": "version already exists, need overwrite permission",
-				})
-			}
-			h.logPublish(organization, packageName, metaData.Version, "failed", "permission denied", c)
-			return c.Status(403).JSON(fiber.Map{
-				"error": "permission denied",
-			})
-		}
+		// 发布新包（packageExists == false）：有效 Token 即可，无需额外权限
+
 	}
 
 	// 6. Validate SHA256
@@ -241,6 +265,7 @@ func (h *PublishHandler) HandlePublish(c *fiber.Ctx) error {
 		TarballPath:   h.storageMgr.GetTarballPath(organization, packageName, metaData.Version),
 		TarballSize:   int64(len(req.Tarball)),
 		TarballSHA256: expectedSHA256,
+		PublisherID:   user.ID,
 	}
 
 	if _, err := h.engine.Insert(pkg); err != nil {
@@ -272,6 +297,14 @@ func (h *PublishHandler) checkPackageExists(org, name, version string) (bool, er
 	// 只检查未删除的包
 	has, err := h.engine.Where("organization = ? AND name = ? AND version = ? AND deleted_at IS NULL",
 		org, name, version).Exist(&models.Package{})
+	return has, err
+}
+
+
+// checkAnyVersionExists 检查该包名+组织是否有任何版本存在过
+func (h *PublishHandler) checkAnyVersionExists(org, name string) (bool, error) {
+	has, err := h.engine.Where("organization = ? AND name = ? AND deleted_at IS NULL",
+		org, name).Exist(&models.Package{})
 	return has, err
 }
 

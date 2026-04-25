@@ -17,6 +17,7 @@ import {
   ElIcon,
   ElTooltip,
   ElPopconfirm,
+  ElPagination,
 } from 'element-plus'
 import {
   Plus,
@@ -42,16 +43,22 @@ import {
   type TeamOrganization,
   type TeamPackage,
   type TeamMember,
+  type TeamsResponse,
 } from '../../api/team'
 import {
   getOrganizations,
   getUsers,
+  getAdminPackages,
   type Organization,
   type User,
+  type Package as AdminPackage,
 } from '../../api/admin'
 
 const teams = ref<Team[]>([])
 const loading = ref(false)
+const currentPage = ref(1)
+const pageSize = ref(20)
+const total = ref(0)
 const dialogVisible = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
 const editingId = ref<number | null>(null)
@@ -65,7 +72,10 @@ const selectedOrgIds = ref<(number | null)[]>([])
 const selectedUserIds = ref<number[]>([])
 const teamMembers = ref<TeamMember[]>([])
 const teamPackages = ref<TeamPackage[]>([])
-const newPackages = ref<any[]>([])
+const selectedPkgs = ref<{ organization: string; package_name: string }[]>([])
+const searchPkgKeyword = ref('')
+const searchPkgResults = ref<{ organization: string; package_name: string; description: string }[]>([])
+let searchPkgTimer: ReturnType<typeof setTimeout>
 
 const selectedMembers = ref<User[]>([])
 const searchMemberKeyword = ref('')
@@ -77,7 +87,7 @@ const formData = ref({
   name: '',
   display_name: '',
   description: '',
-  permission: 'read',
+  
 })
 const formRules = {
   name: [{ required: true, message: '请输入团队标识', trigger: 'blur' }],
@@ -93,8 +103,9 @@ const permissionOptions = [
 const loadTeams = async () => {
   loading.value = true
   try {
-    const data = await getTeams()
-    teams.value = data || []
+    const data = await getTeams({ page: currentPage.value, pageSize: pageSize.value })
+    teams.value = data?.data || []
+    total.value = data?.total || 0
   } catch (error: any) {
     console.error('加载团队列表失败:', error)
     teams.value = []
@@ -102,6 +113,17 @@ const loadTeams = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handlePageChange = (page: number) => {
+  currentPage.value = page
+  loadTeams()
+}
+
+const handleSizeChange = (size: number) => {
+  pageSize.value = size
+  currentPage.value = 1
+  loadTeams()
 }
 
 // 组织关联：搜索 → 添加 → 列表
@@ -171,46 +193,70 @@ const saveOrgs = async () => {
 const openPackagesDialog = async (team: Team) => {
   currentTeam.value = team
   packagesDialogVisible.value = true
+  searchPkgKeyword.value = ''
+  searchPkgResults.value = []
   const data = await getTeamPackages(team.id)
   teamPackages.value = data || []
-  newPackages.value = data?.map((p: TeamPackage) => ({
-    organization: p.organization,
+  selectedPkgs.value = data?.map((p: TeamPackage) => ({
+    organization: p.organization || '',
     package_name: p.package_name,
-    permission: p.permission,
   })) || []
 }
 
-const searchPkgOrgs = async (keyword: string, row: any) => {
-  if (!keyword) return
-  try {
-    const data = await getOrganizations({ search: keyword })
-    row._orgOptions = data || []
-  } catch {
-    row._orgOptions = []
-  }
+const onSearchPkgInput = () => {
+  clearTimeout(searchPkgTimer)
+  searchPkgTimer = setTimeout(async () => {
+    const kw = searchPkgKeyword.value.trim()
+    if (!kw) { searchPkgResults.value = []; return }
+    try {
+      // 解析 org::keyword 格式
+      let searchOrg = ''
+      let searchKeyword = kw
+      if (kw.includes('::')) {
+        const parts = kw.split('::', 2)
+        searchOrg = parts[0].trim()
+        searchKeyword = parts[1].trim()
+      }
+      const data = await getAdminPackages({
+        search: searchKeyword || undefined,
+        org: searchOrg || undefined,
+        pageSize: 20,
+      })
+      const seen = new Set<string>()
+      searchPkgResults.value = (data?.data || []).filter((p: AdminPackage) => {
+        const key = `${p.organization || ''}::${p.name}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      }).map((p: AdminPackage) => ({
+        organization: p.organization,
+        package_name: p.name,
+        description: p.description,
+      }))
+    } catch { searchPkgResults.value = [] }
+  }, 300)
 }
 
-const addPackageRow = () => {
-  newPackages.value.push({
-    organization: '',
-    package_name: '',
-    permission: 'read',
-    _orgOptions: [],
-  })
+const addPkg = (pkg: { organization: string; package_name: string }) => {
+  const key = `${pkg.organization || ''}::${pkg.package_name}`
+  if (selectedPkgs.value.some(p => `${p.organization || ''}::${p.package_name}` === key)) return
+  selectedPkgs.value.push({ organization: pkg.organization, package_name: pkg.package_name })
+  searchPkgKeyword.value = ''
+  searchPkgResults.value = []
 }
 
-const removePackageRow = (index: number) => {
-  newPackages.value.splice(index, 1)
+const removePkg = (idx: number) => {
+  selectedPkgs.value.splice(idx, 1)
 }
 
 const savePackages = async () => {
   if (!currentTeam.value) return
-  const validPackages = newPackages.value.filter(
-    (p) => p.package_name && p.permission
+  const validPackages = selectedPkgs.value.filter(
+    (p) => p.package_name
   )
   try {
     await updateTeamPackages(currentTeam.value.id, validPackages)
-    ElMessage.success('包权限更新成功')
+    ElMessage.success('包关联更新成功')
     packagesDialogVisible.value = false
     await loadTeams()
   } catch (error: any) {
@@ -438,6 +484,17 @@ onMounted(() => {
         </el-table-column>
       </el-table>
 
+      <div v-if="!loading && teams.length > 0" class="pagination-wrap">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :total="total"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next"
+          @current-change="handlePageChange"
+          @size-change="handleSizeChange"
+        />
+      </div>
       <el-empty v-if="!loading && teams.length === 0" description="暂无团队">
         <el-button type="primary" :icon="Plus" @click="openCreateDialog">
           创建第一个团队
@@ -551,54 +608,48 @@ onMounted(() => {
     <el-dialog
       v-model="packagesDialogVisible"
       :title="`包权限 - ${currentTeam?.display_name || currentTeam?.name || ''}`"
-      width="800px"
+      width="700px"
     >
       <div class="dialog-content">
-        <p class="dialog-tip">配置团队对特定包的权限（覆盖默认权限）：</p>
-        <el-button size="small" type="primary" @click="addPackageRow">
-          添加包
-        </el-button>
-        <el-table :data="newPackages" stripe style="margin-top: 10px">
-          <el-table-column prop="organization" label="组织" width="150">
+        <p class="dialog-tip">搜索并添加包（支持 org::keyword 格式搜索组织包）：</p>
+        <div class="search-row">
+          <el-input
+            v-model="searchPkgKeyword"
+            placeholder="输入包名搜索，或使用 org:: 搜索组织下的包"
+            clearable
+            @input="onSearchPkgInput"
+            @clear="searchPkgResults = []"
+          />
+          <div v-if="searchPkgResults.length > 0" class="search-results">
+            <div
+              v-for="pkg in searchPkgResults"
+              :key="`${pkg.organization || ''}::${pkg.package_name}`"
+              class="search-result-item"
+              @click="addPkg(pkg)"
+            >
+              <span v-if="pkg.organization" class="pkg-org-tag">{{ pkg.organization }}::</span>
+              <span class="pkg-name">{{ pkg.package_name }}</span>
+              <span class="search-result-email">{{ pkg.description }}</span>
+              <el-button size="small" type="primary" link>添加</el-button>
+            </div>
+          </div>
+        </div>
+        <p class="dialog-tip" style="margin-top: 16px">已关联的包：</p>
+        <el-table :data="selectedPkgs" stripe max-height="300">
+          <el-table-column label="包标识" min-width="300">
             <template #default="{ row }">
-              <el-select
-                v-model="row.organization"
-                placeholder="搜索组织"
-                size="small"
-                filterable
-                remote
-                reserve-keyword
-                clearable
-                :remote-method="(kw: string) => searchPkgOrgs(kw, row)"
-              >
-                <el-option value="" label="(无组织)" />
-                <el-option
-                  v-for="org in row._orgOptions || []"
-                  :key="org.id"
-                  :value="org.name"
-                  :label="org.display_name || org.name"
-                />
-              </el-select>
+              <span v-if="row.organization" class="pkg-org-tag">{{ row.organization }}::</span>
+              <span class="pkg-name">{{ row.package_name }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="package_name" label="包名" width="200">
-            <template #default="{ row }">
-              <el-input v-model="row.package_name" placeholder="包名" size="small" />
-            </template>
-          </el-table-column>
-          <el-table-column prop="permission" label="权限" width="120">
-            <template #default="{ row }">
-              <el-select v-model="row.permission" size="small">
-                <el-option v-for="opt in permissionOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-              </el-select>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="80" align="center">
+          <el-table-column label="操作" width="100" align="center">
             <template #default="{ $index }">
-              <el-button size="small" type="danger" :icon="Delete" @click="removePackageRow($index)" />
+              <el-button size="small" type="danger" link @click="removePkg($index)">移除</el-button>
             </template>
           </el-table-column>
         </el-table>
+        <el-empty v-if="selectedPkgs.length === 0" description="暂未关联包" :image-size="80" />
+        <p class="dialog-tip" style="margin-top: 8px; font-size: 12px">权限继承自团队默认级别</p>
       </div>
 
       <template #footer>
@@ -787,6 +838,23 @@ onMounted(() => {
 
 .user-name {
   font-weight: 500;
+}
+
+.pkg-org-tag {
+  font-weight: 600;
+  color: #409eff;
+  font-family: 'Courier New', monospace;
+}
+
+.pkg-name {
+  font-weight: 500;
+  font-family: 'Courier New', monospace;
+}
+
+.pagination-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
 }
 
 @media (max-width: 768px) {

@@ -29,25 +29,39 @@ func PermissionLevel(perm string) int {
 }
 
 // CheckPermission 检查用户对包的权限
+// 双路径：1. 个人发布（publisher）2. 团队管理（team）
 func (p *PermissionChecker) CheckPermission(userID int64, org, pkgName, requiredPerm string) bool {
 	requiredLevel := PermissionLevel(requiredPerm)
 
+	// 路径 1：个人发布——无组织包时检查 publisher_id
+	if org == "" {
+		var pkg models.Package
+		has, _ := p.engine.Where("name = ? AND organization = ? AND publisher_i_d = ?",
+			pkgName, "", userID).Get(&pkg)
+		if has && PermissionLevel("write") >= requiredLevel {
+			return true
+		}
+	}
+
+	// 路径 2：团队管理
 	var members []models.TeamMember
 	p.engine.Where("user_i_d = ?", userID).Find(&members)
-
-	if len(members) == 0 {
-		return false
-	}
 
 	for _, member := range members {
 		teamID := member.TeamID
 
-		var teamPkg models.TeamPackage
-		has, _ := p.engine.Where("team_i_d = ? AND organization = ? AND package_name = ?", teamID, org, pkgName).Get(&teamPkg)
-		if has && PermissionLevel(teamPkg.Permission) >= requiredLevel {
-			return true
+		// 检查团队是否关联了该包（team_packages 存在性匹配，权限走 team.permission）
+		has, _ := p.engine.Where("team_i_d = ? AND organization = ? AND package_name = ?",
+			teamID, org, pkgName).Exist(&models.TeamPackage{})
+		if has {
+			var team models.Team
+			p.engine.ID(teamID).Get(&team)
+			if PermissionLevel(team.Permission) >= requiredLevel {
+				return true
+			}
 		}
 
+		// 检查团队是否关联了该组织
 		var teamOrg models.TeamOrganization
 		orgID := p.getOrgID(org)
 		if orgID != nil {

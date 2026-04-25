@@ -11,8 +11,13 @@ import (
 func init() {
 	Register(Migration{
 		Version: "v1.1.0",
-		Name:    "OrganizationMember to Team migration",
-		Execute: migrateOrgMemberToTeam,
+		Name:    "OrganizationMember to Team + Package publisher_id + TeamPackage 去 permission",
+		Execute: func(engine *xorm.Engine) error {
+			if err := migrateOrgMemberToTeam(engine); err != nil {
+				return err
+			}
+			return migrateTeamPackageRefine(engine)
+		},
 	})
 }
 
@@ -98,5 +103,22 @@ func migrateOrgMemberToTeam(engine *xorm.Engine) error {
 	}
 
 	log.Printf("[Migration v1.1.0] Migration completed. Old organization_members table preserved for rollback.")
+	return nil
+}
+
+func migrateTeamPackageRefine(engine *xorm.Engine) error {
+	if _, err := engine.Exec("ALTER TABLE packages ADD COLUMN publisher_i_d INTEGER DEFAULT 0"); err != nil {
+		log.Printf("[Migration v1.1.0] 添加列 publisher_i_d: %v（可忽略）", err)
+	} else {
+		log.Println("[Migration v1.1.0] 添加列 publisher_i_d → OK")
+	}
+
+	if _, err := engine.Exec("ALTER TABLE team_packages DROP COLUMN permission"); err != nil {
+		log.Printf("[Migration v1.1.0] 删除列 permission: %v（可忽略）", err)
+	} else {
+		log.Println("[Migration v1.1.0] 删除列 permission → OK")
+	}
+
+	log.Println("[Migration v1.1.0] 完成：Package.publisher_i_d + TeamPackage 去 permission")
 	return nil
 }

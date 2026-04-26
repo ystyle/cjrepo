@@ -47,6 +47,15 @@ defineExpose({ open })
       <hr class="divider" />
       
       <div class="links">
+        <h4>联系方式</h4>
+        <div class="link-item">
+          <a href="mailto:lxy5266@live.com">lxy5266@live.com</a>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <div class="links">
         <h4>项目链接</h4>
         <div class="link-item">
           <a href="https://github.com/anomalyco/cjrepo" target="_blank">

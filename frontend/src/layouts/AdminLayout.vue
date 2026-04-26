@@ -22,9 +22,7 @@ const goHome = () => {
 }
 
 const openAbout = () => {
-  ElMessageBox.alert('CJRepo - 仓颉私有包仓库服务', '关于', {
-    confirmButtonText: '确定',
-  })
+  aboutDialogRef.value?.open()
 }
 
 const openDocs = () => {

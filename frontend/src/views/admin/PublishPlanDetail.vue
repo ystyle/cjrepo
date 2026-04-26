@@ -203,7 +203,11 @@ onUnmounted(() => {
         <el-table-column label="#" width="50">
           <template #default="{ $index }">{{ $index + 1 }}</template>
         </el-table-column>
-        <el-table-column prop="package_id" label="包 ID" width="80" />
+        <el-table-column label="包名" min-width="180">
+          <template #default="{ row }">
+            <span>{{ row.package_organization ? row.package_organization + '::' : '' }}{{ row.package_name }}@{{ row.package_version }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="110" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.status !== 'pending'" :type="statusTag(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>

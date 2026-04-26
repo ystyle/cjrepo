@@ -13,6 +13,7 @@ export default defineConfig({
       { text: '指南', link: '/guide/' },
       { text: 'API', link: '/api/' },
       { text: '部署', link: '/deploy/' },
+      { text: '关于', link: '/about/' },
     ],
     sidebar: {
       '/guide/': [

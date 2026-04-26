@@ -14,6 +14,9 @@ export interface PublishPlanItem {
   id: number
   plan_id: number
   package_id: number
+  package_name: string
+  package_organization: string
+  package_version: string
   order: number
   category: string
   status: string

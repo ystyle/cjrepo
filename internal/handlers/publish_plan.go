@@ -160,6 +160,13 @@ func (h *PublishPlanHandler) List(c *fiber.Ctx) error {
 }
 
 // Get 计划详情
+type itemWithPkg struct {
+	models.PublishPlanItem
+	PackageName          string `json:"package_name"`
+	PackageOrganization string `json:"package_organization"`
+	PackageVersion      string `json:"package_version"`
+}
+
 func (h *PublishPlanHandler) Get(c *fiber.Ctx) error {
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
@@ -175,9 +182,20 @@ func (h *PublishPlanHandler) Get(c *fiber.Ctx) error {
 	var items []models.PublishPlanItem
 	h.engine.Where("plan_i_d = ?", id).OrderBy("\"order\"").Find(&items)
 
+	itemsWithPkg := make([]itemWithPkg, len(items))
+	for i, item := range items {
+		itemsWithPkg[i] = itemWithPkg{PublishPlanItem: item}
+		var pkg models.Package
+		if ok, _ := h.engine.ID(item.PackageID).Get(&pkg); ok {
+			itemsWithPkg[i].PackageName = pkg.Name
+			itemsWithPkg[i].PackageOrganization = pkg.Organization
+			itemsWithPkg[i].PackageVersion = pkg.Version
+		}
+	}
+
 	return c.JSON(fiber.Map{
 		"plan":  plan,
-		"items": items,
+		"items": itemsWithPkg,
 	})
 }
 

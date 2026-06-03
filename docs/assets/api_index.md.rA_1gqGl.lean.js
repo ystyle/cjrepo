@@ -1,0 +1,1 @@
+import{_ as d,o as a,c as e,ae as o}from"./chunks/framework.DNEY8DPf.js";const m=JSON.parse('{"title":"API","description":"","frontmatter":{},"headers":[],"relativePath":"api/index.md","filePath":"api/index.md"}'),r={name:"api/index.md"};function i(n,t,s,c,p,l){return a(),e("div",null,[...t[0]||(t[0]=[o("",12)])])}const g=d(r,[["render",i]]);export{m as __pageData,g as default};

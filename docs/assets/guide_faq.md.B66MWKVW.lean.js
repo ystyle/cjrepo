@@ -1,0 +1,1 @@
+import{_ as s,o as i,c as e,ae as t}from"./chunks/framework.DNEY8DPf.js";const c=JSON.parse('{"title":"常见问题","description":"","frontmatter":{},"headers":[],"relativePath":"guide/faq.md","filePath":"guide/faq.md"}'),n={name:"guide/faq.md"};function h(l,a,p,o,d,r){return i(),e("div",null,[...a[0]||(a[0]=[t("",33)])])}const g=s(n,[["render",h]]);export{c as __pageData,g as default};

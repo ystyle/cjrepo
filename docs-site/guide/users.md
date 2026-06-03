@@ -29,8 +29,8 @@
 每个用户拥有唯一的 Token，用于 cjpm 客户端的身份认证：
 
 ```bash
-cjpm publish --token <user_token>
-cjpm install <package_name> --token <user_token>
+cjpm publish
+cjpm install <package_name>
 ```
 
 ## 权限
